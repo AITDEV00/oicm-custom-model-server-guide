@@ -17,7 +17,7 @@ Guide to building Custom Model Server for the OICM platform.
 ```dockerfile
 FROM vllm/vllm-openai:v0.19.0
 
-EXPOSE 8080-9000
+EXPOSE 8080
 
 USER root
 
