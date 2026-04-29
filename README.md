@@ -6,8 +6,9 @@ Guide to building Custom Model Server for the OICM platform.
 
 - Server should run on port `8080`
 - Should be non-root user with `UID 10000`
-- Model should be consumed from the path: `/opt/oicm/model`
+- Model should be consumed from the path: `"$MODEL_DOWNLOAD_FOLDER"`. Should  follow the provided script: `startup.sh`
 - Model ID for the OpenAI compatible endpoint should be taken as `MODEL_ID` environment variable.
+- Should have relevant health check endpoint, system defaults to `/health`.
 
 
 ## Example: 
@@ -58,9 +59,33 @@ ENTRYPOINT ["/app/startup.sh"]
 ### Startup Script
 
 ```bash
+#!/bin/bash
+if [[ "${INIT_CONTAINER_USE_PVC}" == "True" ]]; then
+    BASE_PATH=${PVC_PATH:-"/pvc-home"}
+    echo "INIT_CONTAINER_USE_PVC is set. Using PVC path: ${BASE_PATH}"
+elif [[ "$USE_DATA_VOLUME" == "True" ]]; then
+    BASE_PATH=${PVC_PATH:-"/data-volume"}
+    echo "USE_DATA_VOLUME is set. Using DATA VOLUME path: ${BASE_PATH}"
+else
+    BASE_PATH="/tmp/oicm"
+    mkdir -p "${BASE_PATH}" || { echo "Failed to create directory: ${BASE_PATH}"; exit 1; }
+    echo "INIT_CONTAINER_USE_PVC is not set. Using temporary path: ${BASE_PATH}"
+fi
+export BASE_PATH
+
+export BASE_DOWNLOAD_FOLDER="${BASE_PATH}/app/download"
+
+if [[ "$USE_DATA_VOLUME" == "True" ]]; then
+    MODEL_DOWNLOAD_FOLDER="${BASE_PATH}"
+else
+    DEFAULT_MODEL_DOWNLOAD_FOLDER="${BASE_DOWNLOAD_FOLDER}/base_model"
+    MODEL_DOWNLOAD_FOLDER="${MODEL_DOWNLOAD_FOLDER:-${DEFAULT_MODEL_DOWNLOAD_FOLDER}}"
+fi
+
+
 python3 -m vllm.entrypoints.openai.api_server \
   --host=0.0.0.0 \
   --port=8080 \ # <--------------- Fixed Port for the server
-  --model=/opt/oicm/model \ # <--- Fixed Path for Model
+  --model="$MODEL_DOWNLOAD_FOLDER" \ # <--- Fixed Path for Model
   --served-model-name=$MODEL_ID
 ```
