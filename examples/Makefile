@@ -7,7 +7,7 @@ help: # Show this help
 
 
 build-vllm: # Build custom model server image for vLLM
-	@docker build --platform=linux/arm64 -t oicm/vllm:0.19.0 -f vLLM/Dockerfile vLLM
+	@docker build --platform=linux/amd64 -t oicm/vllm:0.19.0 -f vLLM/Dockerfile vLLM
 
 build-sglang: # Build custom model server image for SGLang
-	@docker build --platform=linux/arm64 -t oicm/sglang:0.5.9-cu129 -f sglang/Dockerfile SGLang
+	@docker build --platform=linux/amd64 -t oicm/sglang:0.5.9-cu129 -f sglang/Dockerfile SGLang
