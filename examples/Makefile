@@ -9,5 +9,22 @@ help: # Show this help
 build-vllm: # Build custom model server image for vLLM
 	@docker build --platform=linux/amd64 -t oicm/vllm:0.19.0 -f vLLM/Dockerfile vLLM
 
+build-vllm-podman: # Build custom model server image for vLLM using Podman
+	@podman build --platform=linux/amd64 --build-arg VLLM_VERSION=0.22.0 -t oicm/vllm:0.22.0 -f vLLM-podman/Dockerfile vLLM-podman
+
+
+save-vllm-podman: # Save vLLM Podman image to tar file for transfer
+	@podman save -o vllm-0.22.0-cu129.tar localhost/oicm/vllm:0.22.0-cu129
+
+transfer-vllm-podman: # Transfer vLLM Podman image tar to remote server
+	@rsync -vP --append-verify -e "ssh -c aes128-gcm@openssh.com" vllm-0.22.0-cu129.tar adeo@10.34.104.99:/home/adeo/vllm
+
 build-sglang: # Build custom model server image for SGLang
 	@docker build --platform=linux/amd64 -t oicm/sglang:0.5.9-cu129 -f sglang/Dockerfile SGLang
+
+build-diagnostics: # Build lightweight OICM diagnostic image
+	@podman build --platform=linux/amd64 -t oicm/diagnostics:latest -f diagnostics/Dockerfile diagnostics
+
+
+# podman save -o diagnostics-oicm.tar localhost/oicm/diagnostics:latest
+# rsync -vP --append-verify -e "ssh -c aes128-gcm@openssh.com" diagnostics-oicm.tar adeo@10.34.104.99:/home/adeo

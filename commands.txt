@@ -1,0 +1,9 @@
+  195  docker tag registry.gitlab.com/openinnovationai/platform/mlops/mlops-serving/vllm:0.19.0-nvidia registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/vllm:0.19.0-nvidia-vanilla
+  196  docker push registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/vllm:0.19.0-nvidia-vanilla
+
+docker tag localhost/oicm/vllm:0.22.0-cu129 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/vllm:0.22.0-cu129
+
+docker push registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/vllm:0.22.0-cu129
+
+docker tag localhost/oicm/diagnostics:latest registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/diagnostics:latest
+docker push registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/diagnostics:latest
