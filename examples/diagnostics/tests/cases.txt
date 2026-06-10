@@ -1,0 +1,81 @@
+# Test cases for the diagnostic /test-args endpoint.
+# Blank lines and lines starting with `#` are ignored.
+# Lines `# CATEGORY: name` set the auto-label prefix for the following cases.
+
+# CATEGORY: cat1-quoting
+--speculative-config={"method":"mtp","num_speculative_tokens":2}
+--speculative-config='{"method":"mtp","num_speculative_tokens":2}'
+--speculative-config '{"method":"mtp","num_speculative_tokens":2}'
+--speculative-config {"method":"mtp","num_speculative_tokens":2}
+--default-chat-template-kwargs={"preserve_thinking":true}
+--default-chat-template-kwargs='{"preserve_thinking":true}'
+
+# CATEGORY: cat2-shapes
+--speculative-config={"method":"mtp","num_speculative_tokens":2}
+--speculative-config.method=mtp --speculative-config.num_speculative_tokens=2
+--spec-method=mtp --spec-tokens=2
+--speculative-config={"method":"qwen3_next_mtp","num_speculative_tokens":2}
+--speculative-config.method=qwen3_next_mtp --speculative-config.num_speculative_tokens=2
+
+# CATEGORY: cat3-separator
+--max-num-seqs=256
+--max-num-seqs 256
+--gpu-memory-utilization=0.92 --max-model-len=262144 --max-num-seqs=256
+--gpu-memory-utilization 0.92 --max-model-len 262144 --max-num-seqs 256
+--max-num-seqs=64 --kv-cache-dtype fp8 --enable-chunked-prefill --trust-remote-code
+
+# CATEGORY: cat4-booleans
+--trust-remote-code
+--enable-chunked-prefill
+--enable-auto-tool-choice
+--language-model-only
+--trust-remote-code --enable-chunked-prefill --enable-auto-tool-choice
+--trust-remote-code --max-num-seqs 64
+
+# CATEGORY: cat5-json-lists
+--cudagraph-capture-sizes=[1,2,4,8,16]
+--cudagraph-capture-sizes [1,2,4,8,16]
+--cudagraph-capture-sizes='[1,2,4,8,16]'
+--collect-detailed-traces=["model","worker"]
+
+# CATEGORY: cat6-json-specials
+--reasoning-config={"reasoning_end_str":"I have to answer now.</think>"}
+--reasoning-config='{"reasoning_end_str":"I have to answer now.</think>"}'
+--reasoning-config={"reasoning_start_str":"<think>","reasoning_end_str":"</think>"}
+--hf-overrides={"rope_scaling":{"type":"yarn","factor":2.0}}
+--mm-processor-kwargs={"min_pixels":3136,"max_pixels":12845056}
+
+# CATEGORY: cat7-numbers
+--gpu-memory-utilization=0.92
+--gpu-memory-utilization 0.92
+--temperature=-0.5
+--temperature -0.5
+--seed=42
+--learning-rate=1e-4
+
+# CATEGORY: cat8-duplicates
+--gpu-memory-utilization=0.92 --gpu-memory-utilization=0.8
+--max-model-len=262144 --max-model-len 32000
+--gpu-memory-utilization=0.92 --max-model-len=262144 --gpu-memory-utilization 0.8 --max-model-len 32000
+--speculative-config={"method":"mtp"} --speculative-config='{"method":"qwen3_next_mtp"}'
+
+# CATEGORY: cat9-live-doublepaste
+--gpu-memory-utilization=0.92 --max-model-len=262144 --max-num-seqs=256 --max-num-batched-tokens=16384 --enable-chunked-prefill --kv-cache-dtype=fp8 --attention-backend=flashinfer --dtype=auto --load-format=auto --speculative-config={"method":"mtp","num_speculative_tokens":2} --trust-remote-code --enable-auto-tool-choice --tool-call-parser=qwen3_coder --reasoning-parser=qwen3 --default-chat-template-kwargs={"preserve_thinking":true} --gpu-memory-utilization 0.8 --max-model-len 32000 --max-num-seqs 4 --max-num-batched-tokens 16384 --enable-chunked-prefill --kv-cache-dtype fp8 --attention-backend flashinfer --dtype auto --load-format auto --speculative-config '{"method":"mtp","num_speculative_tokens":2}' --trust-remote-code --enable-auto-tool-choice --tool-call-parser qwen3_coder --reasoning-parser qwen3 --default-chat-template-kwargs '{"preserve_thinking":true}'
+
+# CATEGORY: cat10-realistic
+--gpu-memory-utilization=0.92 --max-model-len=262144 --max-num-seqs=256 --enable-chunked-prefill --kv-cache-dtype=fp8 --attention-backend=flashinfer --spec-method=mtp --spec-tokens=2 --trust-remote-code --enable-auto-tool-choice --tool-call-parser=qwen3_coder --reasoning-parser=qwen3 --default-chat-template-kwargs='{"preserve_thinking":true}'
+--gpu-memory-utilization=0.90 --max-model-len=262144 --max-num-seqs=64 --language-model-only --kv-cache-dtype=fp8 --spec-method=qwen3_next_mtp --spec-tokens=2 --trust-remote-code --enable-auto-tool-choice --tool-call-parser=qwen3_coder --reasoning-parser=qwen3
+
+# CATEGORY: cat11-must-fail
+--speculative-config={"method":"mtp"
+--speculative-config={method:mtp,num_speculative_tokens:2}
+--speculative-config='broken
+--max-num-seqs=
+--speculative-config={"method":"mtp",}
+
+# CATEGORY: cat12-edges
+--enable-chunked-prefill
+--enable-chunked-prefill --enable-chunked-prefill
+--unknown-flag=somevalue
+something-without-a-dash
+--flag=value-with-=-equals-in-it

@@ -134,18 +134,44 @@ done
 # Track explicitly (LD_LIBRARY_PATH may be pre-set by OICM, so don't test that).
 [ "${COMPAT_FOUND}" -eq 0 ] && echo "[startup] WARNING: no cuda-compat dir found; cu129 on a 570 driver may fail at warmup."
 
-# --- Operator-supplied extra flags (OICM's webui dev-args -> EXTRA_ARGS env) ---
-
-# The diagnostic proved OICM passes the webui "extra args" field as EXTRA_ARGS
-# (k8s args: stay empty). eval-split it into a real argv array so quoted values
-# like the speculative-config JSON survive. Guarded so empty is a no-op.
+# --- Operator-supplied extra flags (OICM "Model Server Arguments" -> EXTRA_ARGS) ---
+#
+# OICM passes the field VERBATIM into EXTRA_ARGS (inner double quotes intact --
+# diagnostic-confirmed by reading the env on a live pod). The ONLY transform
+# applied to it is the normalizer below.
+#
+# /app/arg_normalizer.py accepts EVERY form an operator might type, so nobody
+# has to remember a quoting rule (this replaces the old "MUST single-quote JSON"
+# constraint, which was a footgun):
+#   --speculative-config={"method":"mtp","num_speculative_tokens":2}   (unquoted = JSON)
+#   --speculative-config='{"method":"mtp","num_speculative_tokens":2}' (single-quoted)
+#   --speculative-config '{"method":"mtp","num_speculative_tokens":2}' (space form)
+#   --spec-method=mtp --spec-tokens=2                                   (scalar)
+#   --speculative-config.method=mtp ...                                (dot-notation)
+# It does three things, all in Python stdlib (shlex/json -- no pip install):
+#   1. PROTECT unquoted JSON: before shlex.split would strip the inner " (turning
+#      {"method":"mtp"} into the invalid {method:mtp}), wrap any value starting
+#      with { or [ in shlex.quote so it round-trips intact. Detection is
+#      STRUCTURAL (value shape), so it works for every current JSON flag AND
+#      every future one without any hardcoded list to maintain.
+#   2. FOLD space form (--flag value) into --flag=value; keep booleans bare.
+#   3. DEDUP repeated flags last-wins (argparse-style) -- absorbs an accidental
+#      double-paste that vLLM would otherwise reject as 'Found duplicate keys'.
+# We still NEVER use `eval` (brace-expansion + injection risk); tokens come back
+# over a NUL delimiter so bash can never re-split them. The normalizer logs any
+# auto-fixes/dropped flags/invalid-JSON to stderr (visible in `kubectl logs`).
+#
+# This is the SAME module the diagnostic image's POST /test-args endpoint uses,
+# so anything that passes /test-args will work here, and anything that fails
+# /test-args fails here -- one source of truth.
+# Locate arg_normalizer.py next to this script so the entrypoint works no
+# matter where OICM runs it from (and doesn't depend on a hardcoded /app).
+_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXTRA_ARGS_ARR=()
-if [ -n "${EXTRA_ARGS:-}" ]; then
-    eval "EXTRA_ARGS_ARR=(${EXTRA_ARGS})"
-fi
-# Also accept VLLM_EXTRA_ARGS as a secondary, in case you standardize on it.
-if [ -n "${VLLM_EXTRA_ARGS:-}" ]; then
-    eval "EXTRA_ARGS_ARR+=(${VLLM_EXTRA_ARGS})"
+if [ -n "${EXTRA_ARGS:-}${VLLM_EXTRA_ARGS:-}" ]; then
+    while IFS= read -r -d '' _tok; do
+        EXTRA_ARGS_ARR+=("${_tok}")
+    done < <(cd "${_SCRIPT_DIR}" && python3 -m arg_normalizer --argv-nul)
 fi
 
 # --- Tensor parallelism: match the allocation, but never break MIG ----------
@@ -155,25 +181,39 @@ fi
 # 1 on a MIG slice -- a MIG instance is a single isolated partition with no
 # NVLink/P2P, so --tensor-parallel-size > 1 fails there. We detect MIG from the
 # MIG- prefix in NVIDIA_VISIBLE_DEVICES. Skip entirely if the operator already
-# set tensor parallelism (or any non-TP parallelism like -dp) via EXTRA_ARGS.
+# set any parallelism flag -- we now scan the NORMALIZED tokens (covers =,
+# space, and short forms uniformly) instead of substring-matching the raw
+# string (which missed cases like `--tensor-parallel-size=2` with no trailing
+# space).
+_has_parallel_flag() {
+    local t
+    for t in "${EXTRA_ARGS_ARR[@]}"; do
+        case "$t" in
+            --tensor-parallel-size|--tensor-parallel-size=*|-tp|-tp=*|\
+            --data-parallel-size|--data-parallel-size=*|-dp|-dp=*|\
+            --pipeline-parallel-size|--pipeline-parallel-size=*|-pp|-pp=*)
+                return 0 ;;
+        esac
+    done
+    return 1
+}
+
 TP_ARGS=()
-if [[ " ${EXTRA_ARGS:-} ${VLLM_EXTRA_ARGS:-} " != *" --tensor-parallel-size"* ]] && \
-   [[ " ${EXTRA_ARGS:-} ${VLLM_EXTRA_ARGS:-} " != *" -tp"* ]] && \
-   [[ " ${EXTRA_ARGS:-} ${VLLM_EXTRA_ARGS:-} " != *" --data-parallel-size"* ]] && \
-   [[ " ${EXTRA_ARGS:-} ${VLLM_EXTRA_ARGS:-} " != *" -dp"* ]] && \
-   [[ " ${EXTRA_ARGS:-} ${VLLM_EXTRA_ARGS:-} " != *" --pipeline-parallel-size"* ]]; then
+if ! _has_parallel_flag; then
     # MIG slice -> force single-GPU regardless of NUM_GPUS.
     if [[ "${NVIDIA_VISIBLE_DEVICES:-}" == MIG-* ]]; then
-        TP_ARGS=(--tensor-parallel-size 1)
+        TP_ARGS=(--tensor-parallel-size=1)
         echo "[startup] MIG slice detected -> tensor-parallel-size=1"
     # Multiple full GPUs -> shard across them (only if NUM_GPUS is a number > 1).
     elif [[ "${NUM_GPUS:-1}" =~ ^[0-9]+$ ]] && [ "${NUM_GPUS:-1}" -gt 1 ]; then
-        TP_ARGS=(--tensor-parallel-size "${NUM_GPUS}")
+        TP_ARGS=(--tensor-parallel-size="${NUM_GPUS}")
         echo "[startup] ${NUM_GPUS} GPUs -> tensor-parallel-size=${NUM_GPUS}"
         # TP>1 uses /dev/shm for inter-worker IPC; a small shm causes Bus errors.
         echo "[startup] NOTE: TP>1 needs adequate /dev/shm; raise it in OICM if you see 'Bus error'."
     fi
     # else: single full GPU -> leave vLLM's default of 1 (no flag needed).
+else
+    echo "[startup] operator set a parallelism flag -> leaving TP to operator args"
 fi
 
 echo "[startup] launching vLLM (tp:${TP_ARGS[*]:-default} extra:${EXTRA_ARGS_ARR[*]:-none})"

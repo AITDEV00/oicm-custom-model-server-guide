@@ -306,6 +306,27 @@ else
 fi
 
 echo
+echo "## 16. EXTRA_ARGS -> vLLM ARGV (mirrors the PRODUCTION normalizer)"
+echo "  Runs the SAME logic that the production startup.sh uses (and that the"
+echo "  new POST /test-args endpoint also uses), so the FINAL argv shown here is"
+echo "  exactly what production hands to vLLM. Reports what was AUTO-FIXED."
+echo "  Verdicts:"
+echo "    PASS            - clean, nothing to fix"
+echo "    PASS (auto-fix) - production starts fine; normalizer repaired/dedup'd"
+echo "    FAIL            - still broken after normalization (e.g. malformed JSON)"
+# Single source of truth: arg_normalizer.py also powers POST /test-args.
+# Run it as a child so a bug in the module can never abort the rest of the
+# report -- on import/runtime error we still get a readable note here.
+if ! ( cd /app && python3 -m arg_normalizer 2>&1 ); then
+    echo "  [section16] arg_normalizer failed; see traceback above"
+fi
+echo
+echo "  Try other inputs WITHOUT redeploying:"
+echo "    curl -X POST -H 'Content-Type: text/plain' --data-raw 'YOUR_ARGS' \\"
+echo "         http://<pod>:8080/test-args?label=case1"
+echo "    curl 'http://<pod>:8080/test-runs?limit=20'"
+
+echo
 echo "$LINE"
 echo "  END OF REPORT"
 echo "$LINE"

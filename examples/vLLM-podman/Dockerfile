@@ -61,15 +61,18 @@ ENV PATH="$HOME/.local/bin:$PATH"
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
-# Copy the entrypoint, owned by the runtime user/group.
+# Copy the entrypoint and the arg normalizer (one source of truth, also
+# imported by the diagnostic image's POST /test-args endpoint).
+# Pure stdlib (shlex/json) -- no pip install, no new layer.
 COPY --chown=10000:0 startup.sh /app/startup.sh
+COPY --chown=10000:0 arg_normalizer.py /app/arg_normalizer.py
 
 # World-executable so it runs regardless of which UID OICM uses.
-RUN chmod 0755 /app/startup.sh
+RUN chmod 0755 /app/startup.sh /app/arg_normalizer.py
 
 # OICM does not set a custom workdir; /app matches the original convention.
 WORKDIR /app
 
 # Entrypoint script resolves model path, fixes caches, enables cuda-compat,
-# applies EXTRA_ARGS, and execs vLLM.
+# normalizes EXTRA_ARGS via /app/arg_normalizer.py, and execs vLLM.
 ENTRYPOINT ["/app/startup.sh"]

@@ -11,6 +11,7 @@ build-vllm: # Build custom model server image for vLLM
 
 build-vllm-podman: # Build custom model server image for vLLM using Podman
 	@podman build --platform=linux/amd64 --build-arg VLLM_VERSION=0.22.0 -t oicm/vllm:0.22.0 -f vLLM-podman/Dockerfile vLLM-podman
+	@podman tag oicm/vllm:0.22.0 localhost/oicm/vllm:0.22.0-cu129
 
 
 save-vllm-podman: # Save vLLM Podman image to tar file for transfer
@@ -21,6 +22,9 @@ transfer-vllm-podman: # Transfer vLLM Podman image tar to remote server
 
 build-sglang: # Build custom model server image for SGLang
 	@docker build --platform=linux/amd64 -t oicm/sglang:0.5.9-cu129 -f sglang/Dockerfile SGLang
+
+build-cputests: # Build CPU + Silero-VAD diagnostic image
+	@podman build --platform=linux/amd64 -t cpu-vad-diag:latest -f cputests/Dockerfile cputests
 
 build-diagnostics: # Build lightweight OICM diagnostic image
 	@podman build --platform=linux/amd64 -t oicm/diagnostics:latest -f diagnostics/Dockerfile diagnostics

@@ -35,7 +35,11 @@ ENV PATH="$HOME/.local/bin:$PATH"
 
 COPY --chown=10000:0 startup.sh /app/startup.sh
 COPY --chown=10000:0 serve_report.py /app/serve_report.py
-RUN chmod 0755 /app/startup.sh /app/serve_report.py
+# arg_normalizer.py is the single source of truth for the arg-parsing logic,
+# imported by both startup.sh's section 16 (subprocess) and serve_report.py's
+# POST /test-args (in-process). Pure stdlib -- no pip install needed.
+COPY --chown=10000:0 arg_normalizer.py /app/arg_normalizer.py
+RUN chmod 0755 /app/startup.sh /app/serve_report.py /app/arg_normalizer.py
 
 WORKDIR /app
 ENTRYPOINT ["/app/startup.sh"]
