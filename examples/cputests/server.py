@@ -31,9 +31,42 @@ from pydantic import BaseModel, Field
 
 import bench
 
-DATA_DIR = os.environ.get("DATA_DIR", "/data")
+def _resolve_data_dir() -> str:
+    """
+    Pick the first writable directory for run history.
+
+    The container may run with readOnlyRootFilesystem (e.g. the OICM runtime),
+    where /data does not exist and cannot be created. We probe candidates and
+    fall back through writable mounts so the server never crashes on startup.
+    Order: $DATA_DIR, then common writable mounts, then an ephemeral temp dir.
+    """
+    candidates = []
+    if os.environ.get("DATA_DIR"):
+        candidates.append(os.environ["DATA_DIR"])
+    candidates += ["/tmp/cpu-vad-diag", "/dev/shm/cpu-vad-diag"]
+
+    for base in candidates:
+        runs = os.path.join(base, "runs")
+        try:
+            os.makedirs(runs, exist_ok=True)
+            probe = os.path.join(base, ".write_probe")
+            with open(probe, "w", encoding="utf-8") as fh:
+                fh.write("ok")
+            os.remove(probe)
+            return base
+        except OSError:
+            continue  # read-only or unavailable; try the next candidate
+
+    # Last resort: an ephemeral dir under TMPDIR (always writable here).
+    import tempfile
+
+    base = tempfile.mkdtemp(prefix="cpu-vad-diag-")
+    os.makedirs(os.path.join(base, "runs"), exist_ok=True)
+    return base
+
+
+DATA_DIR = _resolve_data_dir()
 RUNS_DIR = os.path.join(DATA_DIR, "runs")
-os.makedirs(RUNS_DIR, exist_ok=True)
 
 app = FastAPI(title="CPU + Silero-VAD Diagnostic", version="1.0.0")
 _write_lock = threading.Lock()
@@ -113,6 +146,7 @@ def index() -> Dict[str, Any]:
     }
 
 
+@app.get("/health")
 @app.get("/health-check")
 def health_check() -> Dict[str, Any]:
     caps = {
@@ -134,6 +168,7 @@ def health_check() -> Dict[str, Any]:
         "capabilities": caps,
         "vad_available": vad_ok,
         "vad_detail": vad_detail,
+        "data_dir": DATA_DIR,
         "stored_runs": len([n for n in os.listdir(RUNS_DIR) if n.endswith(".json")]),
     }
 

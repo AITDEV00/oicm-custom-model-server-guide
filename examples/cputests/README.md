@@ -12,13 +12,13 @@ fetch back.
 docker compose up --build
 # or plain docker:
 docker build -t cpu-vad-diag .
-docker run --rm -p 8000:8000 -v diag-data:/data cpu-vad-diag
+docker run --rm -p 8080:8080 -v diag-data:/data cpu-vad-diag
 ```
 
 Benchmark a specific core allocation (mirrors a k8s cpuset / `--cpus` limit):
 
 ```bash
-docker run --rm -p 8000:8000 --cpuset-cpus="0-3" cpu-vad-diag
+docker run --rm -p 8080:8080 --cpuset-cpus="0-3" cpu-vad-diag
 ```
 
 ## Endpoints
@@ -26,16 +26,28 @@ docker run --rm -p 8000:8000 --cpuset-cpus="0-3" cpu-vad-diag
 | Method | Path                  | Purpose                                            |
 |--------|-----------------------|----------------------------------------------------|
 | GET    | `/`                   | endpoint index                                     |
-| GET    | `/health-check`       | liveness + capability probe (sysbench/lscpu/VAD)   |
+| GET    | `/health` / `/health-check` | liveness + capability probe (both paths work)|
 | POST   | `/run`                | run benchmark; **streams NDJSON** progress, logged |
 | GET    | `/runs`               | all stored run outputs (history); `?full=true`     |
 | GET    | `/runs/{run_id}`      | single run's full output                           |
 | GET    | `/runs/{run_id}/log`  | single run's raw progress log                      |
 
+> `/health` and `/health-check` are the same handler. `/health` is included
+> because k8s `kube-probe` defaults to it.
+
+## Read-only filesystems / persistence
+
+The server resolves a **writable** directory for run history at startup, so it
+runs fine under `readOnlyRootFilesystem: true` (e.g. restricted k8s/OICM pods).
+Resolution order: `$DATA_DIR` → `/tmp/cpu-vad-diag` → `/dev/shm/cpu-vad-diag` →
+an ephemeral temp dir. The chosen path is reported in `/health` as `data_dir`.
+To persist history across restarts, point `DATA_DIR` at a writable volume
+(e.g. a PVC: `DATA_DIR=/pvc-home/cpu-vad-diag`).
+
 ### Run a benchmark (streaming)
 
 ```bash
-curl -N -X POST http://localhost:8000/run \
+curl -N -X POST http://localhost:8080/run \
   -H 'Content-Type: application/json' \
   -d '{"repetitions":3,"cpu_max_prime":20000,"vad_chunks":2000,"vad_threads":1}'
 ```
@@ -61,9 +73,9 @@ disconnects.
 ### Fetch history
 
 ```bash
-curl http://localhost:8000/runs            # slim summaries
-curl http://localhost:8000/runs?full=true  # everything
-curl http://localhost:8000/runs/<run_id>   # one run
+curl http://localhost:8080/runs            # slim summaries
+curl http://localhost:8080/runs?full=true  # everything
+curl http://localhost:8080/runs/<run_id>   # one run
 ```
 
 ## Notes on the VAD number

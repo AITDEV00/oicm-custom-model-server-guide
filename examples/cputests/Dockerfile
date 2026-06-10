@@ -29,9 +29,16 @@ ENV SILERO_ONNX_PATH=/srv/models/silero_vad.onnx
 
 COPY server.py bench.py /srv/app/
 
-# Persisted run history lives here; mount a volume to keep it across restarts.
-ENV DATA_DIR=/data
-RUN mkdir -p /data && useradd -m -u 10001 diag && chown -R diag:diag /data /srv
+# History defaults to a writable tmp path. The app resolves a writable dir at
+# runtime regardless, so this also works under readOnlyRootFilesystem (OICM),
+# where it falls back to /tmp automatically. Override with DATA_DIR (e.g. a PVC
+# like /pvc-home/cpu-vad-diag) to persist across restarts.
+ENV DATA_DIR=/tmp/cpu-vad-diag
+
+# Run unprivileged for local use. Note: platforms like OICM override this with
+# their own securityContext (uid 10000, gid 0); app files are world-readable so
+# that works too, and all writes go to /tmp which any uid can write.
+RUN useradd -m -u 10001 diag && chown -R diag:diag /srv
 USER diag
 
 # Keep VAD per-stream behaviour predictable; override at runtime if you want.

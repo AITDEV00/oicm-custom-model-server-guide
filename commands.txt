@@ -16,6 +16,9 @@ podman login --tls-verify=false registry.adeoaiengine.ecouncil.ae custom-images 
 podman tag localhost/oicm/diagnostics:latest registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/diagnostics:latest
 podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/diagnostics:latest
 
+podman tag localhost/cpu-vad-diag:latest registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/cpu-vad-diag:latest
+podman push --tls-verify=false localhost/cpu-vad-diag:latest registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/cpu-vad-diag:latest
+
 vllm serve Qwen/Qwen3.6-27B-FP8 \
   --gpu-memory-utilization 0.92 \
   --max-model-len 262144 \
