@@ -9,16 +9,20 @@ help: # Show this help
 build-vllm: # Build custom model server image for vLLM
 	@docker build --platform=linux/amd64 -t oicm/vllm:0.19.0 -f vLLM/Dockerfile vLLM
 
-build-vllm-podman: # Build custom model server image for vLLM using Podman
-	@podman build --platform=linux/amd64 --build-arg VLLM_VERSION=0.22.0 -t oicm/vllm:0.22.0 -f vLLM-podman/Dockerfile vLLM-podman
+build-vllm-podman-0.22.0: # Build custom model server image for vLLM using Podman
+	@podman build --platform=linux/amd64 --build-arg VLLM_VERSION=0.22.0 -t oicm/vllm:0.22.0 -f vLLM-podman-0.22.0-cu129-amd64/Dockerfile vLLM-podman-0.22.0-cu129-amd64
 	@podman tag oicm/vllm:0.22.0 localhost/oicm/vllm:0.22.0-cu129
 
+build-vllm-podman-nightly: # Build custom model server image for vLLM using Podman
+	@podman build --platform=linux/amd64 -t oicm/vllm:nightly-cu129-amd64 -f vLLM-podman-nightly-cu129-amd64/Dockerfile vLLM-podman-nightly-cu129-amd64
+	@podman tag oicm/vllm:nightly-cu129-amd64 localhost/oicm/vllm:nightly-cu129-amd64
 
-save-vllm-podman: # Save vLLM Podman image to tar file for transfer
-	@podman save -o vllm-0.22.0-cu129.tar localhost/oicm/vllm:0.22.0-cu129
 
-transfer-vllm-podman: # Transfer vLLM Podman image tar to remote server
-	@rsync -vP --append-verify -e "ssh -c aes128-gcm@openssh.com" vllm-0.22.0-cu129.tar adeo@10.34.104.99:/home/adeo/vllm
+# save-vllm-podman: # Save vLLM Podman image to tar file for transfer
+# 	@podman save -o vllm-0.22.0-cu129.tar localhost/oicm/vllm:0.22.0-cu129
+
+# transfer-vllm-podman-0.22.0: # Transfer vLLM Podman image tar to remote server
+# 	@rsync -vP --append-verify -e "ssh -c aes128-gcm@openssh.com" vllm-0.22.0-cu129.tar adeo@10.34.104.99:/home/adeo/vllm
 
 build-sglang: # Build custom model server image for SGLang
 	@docker build --platform=linux/amd64 -t oicm/sglang:0.5.9-cu129 -f sglang/Dockerfile SGLang
