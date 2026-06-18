@@ -5,8 +5,9 @@
 # this image is purely the serving runtime.
 # =============================================================================
 
-# cu129 build: there is no vLLM 0.22.0 cu128 image, and the node driver is 570
-# (CUDA 12.8), so we keep cu129 and bridge the gap with CUDA forward-compat below.
+# cu129 build. The runtime decides CUDA forward-compat per-node (see startup.sh):
+# H200 nodes on R580/CUDA 13.0 run this image natively, while any older nodes
+# (e.g. R570/CUDA 12.8) fall back to the forward-compat libs the base ships.
 FROM docker.io/vllm/vllm-openai:cu129-nightly-x86_64
 
 # OICM's Service and k8s /health probe target 8080 (confirmed in diagnostic).
@@ -22,13 +23,13 @@ RUN set -ex && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git gcc curl && \
     rm -rf /var/lib/apt/lists/*
 
-# NOTE: CUDA 12.9 forward-compatibility libs are NOT installed here -- the
-# vllm:0.22.0-cu129 base image ALREADY ships them at /usr/local/cuda/compat/
-# (verified: libcuda.so.575.57.08 + libnvidia-ptxjitcompiler/nvvm from R575).
-# These R575 user-mode driver libs let the cu129 runtime (Triton JIT + CUDA
-# graph capture) work on the node's older R570 / CUDA 12.8 kernel driver, which
-# is supported because the GPU is a datacenter H200. startup.sh prepends this
-# dir to LD_LIBRARY_PATH at runtime so it loads ahead of the injected 570 libs.
+# NOTE: CUDA forward-compatibility libs are NOT installed here -- the cu129 base
+# image ALREADY ships them at /usr/local/cuda/compat/ (an R575-era libcuda +
+# ptxjitcompiler/nvvm). They are used ONLY on nodes whose kernel driver is older
+# than the image's CUDA; startup.sh probes the host driver at runtime and prepends
+# this dir to LD_LIBRARY_PATH only when needed. On nodes already new enough (e.g.
+# R580/CUDA 13.0) compat is intentionally NOT loaded, because an older user-mode
+# libcuda on a newer kernel module triggers CUDA error 803.
 
 # Create the runtime user with primary group 0. OICM runs us as exactly uid
 # 10000 (diagnostic confirmed), but gid-0 + group-writable dirs keeps the image
@@ -69,6 +70,7 @@ RUN chmod 0755 /app/startup.sh /app/arg_normalizer.py
 # OICM does not set a custom workdir; /app matches the original convention.
 WORKDIR /app
 
-# Entrypoint script resolves model path, fixes caches, enables cuda-compat,
-# normalizes EXTRA_ARGS via /app/arg_normalizer.py, and execs vLLM.
+# Entrypoint script resolves model path, fixes caches, enables cuda-compat only
+# when the host driver needs it, normalizes EXTRA_ARGS via /app/arg_normalizer.py,
+# and execs vLLM.
 ENTRYPOINT ["/app/startup.sh"]

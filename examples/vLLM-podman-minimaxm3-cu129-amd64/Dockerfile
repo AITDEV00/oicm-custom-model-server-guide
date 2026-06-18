@@ -8,10 +8,7 @@
 # cu129 build. The runtime decides CUDA forward-compat per-node (see startup.sh):
 # H200 nodes on R580/CUDA 13.0 run this image natively, while any older nodes
 # (e.g. R570/CUDA 12.8) fall back to the forward-compat libs the base ships.
-FROM docker.io/vllm/vllm-openai:v0.22.0-cu129
-
-# Pin the vLLM version so the [audio] reinstall below matches the base exactly.
-ARG VLLM_VERSION=0.22.0
+FROM docker.io/vllm/vllm-openai:minimax-m3-x86_64-cu129
 
 # OICM's Service and k8s /health probe target 8080 (confirmed in diagnostic).
 EXPOSE 8080
@@ -24,8 +21,7 @@ USER root
 RUN set -ex && \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git gcc curl && \
-    rm -rf /var/lib/apt/lists/* && \
-    pip install vllm[audio]==${VLLM_VERSION} --no-cache-dir
+    rm -rf /var/lib/apt/lists/*
 
 # NOTE: CUDA forward-compatibility libs are NOT installed here -- the cu129 base
 # image ALREADY ships them at /usr/local/cuda/compat/ (an R575-era libcuda +

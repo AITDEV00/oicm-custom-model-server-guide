@@ -8,10 +8,10 @@
 # cu129 build. The runtime decides CUDA forward-compat per-node (see startup.sh):
 # H200 nodes on R580/CUDA 13.0 run this image natively, while any older nodes
 # (e.g. R570/CUDA 12.8) fall back to the forward-compat libs the base ships.
-FROM docker.io/vllm/vllm-openai:v0.22.0-cu129
+FROM docker.io/vllm/vllm-openai:v0.23.0-cu129
 
 # Pin the vLLM version so the [audio] reinstall below matches the base exactly.
-ARG VLLM_VERSION=0.22.0
+ARG VLLM_VERSION=0.23.0
 
 # OICM's Service and k8s /health probe target 8080 (confirmed in diagnostic).
 EXPOSE 8080

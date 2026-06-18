@@ -13,9 +13,13 @@
 #     FLASHINFER_WORKSPACE_BASE, XDG_CACHE_HOME, XDG_CONFIG_HOME, TMPDIR -> /tmp.
 #     We DEFER to those and only fill the gaps OICM missed.
 #   * Cluster is air-gapped (HF / PyPI unreachable) -> must run fully offline.
-#   * Node driver is R570 (CUDA 12.8); the image is cu129. The base image SHIPS
-#     the R575 forward-compat libs at /usr/local/cuda/compat (verified), so we
-#     just put them ahead on LD_LIBRARY_PATH -- nothing to install.
+#   * CUDA forward-compat is DECIDED AT RUNTIME, never assumed. The GPU fleet is
+#     mixed: H200 nodes run R580 / CUDA 13.0 and support the cu129 image NATIVELY,
+#     while older nodes may be on R570 / CUDA 12.8 and need the forward-compat libs
+#     the base image ships at /usr/local/cuda/compat. We probe the native driver
+#     and prepend compat ONLY when the host actually needs it -- forcing compat on
+#     a driver that is already new enough loads an OLDER user-mode libcuda than the
+#     kernel module and triggers CUDA error 803 at init. See the compat section.
 #   * k8s liveness/readiness probes /health, which vLLM serves natively (8080).
 #
 # Operator-controlled in the OICM UI (so NOT hard-coded here):
@@ -96,8 +100,8 @@ export HOME=/tmp
 # instead of relying on the XDG default by luck.
 export VLLM_CACHE_ROOT="${VLLM_CACHE_ROOT:-/tmp/vllm}"
 
-# CUDA's PTX-JIT cache defaults to ~/.nv (=/home/runner/.nv, READ-ONLY). On the
-# cu129-on-570 forward-compat path the JIT can fire, so give it a writable dir.
+# CUDA's PTX-JIT cache defaults to ~/.nv (=/home/runner/.nv, READ-ONLY). The JIT
+# can fire (forward-compat path, or any PTX-only kernel), so give it a writable dir.
 export CUDA_CACHE_PATH="${CUDA_CACHE_PATH:-/tmp/nv}"
 
 # Pre-create the two dirs we introduced (the OICM /tmp ones already exist).
@@ -110,29 +114,114 @@ mkdir -p "${VLLM_CACHE_ROOT}" "${CUDA_CACHE_PATH}"
 export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 export TRANSFORMERS_OFFLINE="${TRANSFORMERS_OFFLINE:-1}"
 
-# --- CUDA 12.9 forward compatibility on the node's R570 (CUDA 12.8) driver ---
+# --- CUDA forward-compatibility: enable ONLY when the host driver needs it ----
+#
+# The base image ships CUDA forward-compat user-mode driver libs (an R575-era
+# libcuda + ptxjitcompiler + nvvm) under /usr/local/cuda/compat. Forward-compat
+# is a ONE-WAY bridge: it lets a NEWER CUDA userspace run on an OLDER kernel
+# driver. It is valid ONLY when the host kernel driver is OLDER than the image's
+# CUDA. If the host driver already supports the image's CUDA (same or newer --
+# e.g. an H200 on R580 / CUDA 13.0 running this cu129 image), prepending the
+# compat libcuda DOWNGRADES the user-mode driver below the kernel module, and
+# the driver rejects the pair with CUDA error 803 (cudaErrorSystemDriverMismatch)
+# at cuInit -> the engine never starts -> CrashLoopBackOff.
+#
+# The fleet is mixed and node drivers get upgraded under us, so we DECIDE at
+# runtime instead of hardcoding a driver version. The decision mirrors CUDA's
+# OWN sufficiency rule: the host is fine on its native libcuda iff the driver's
+# max supported CUDA (cuDriverGetVersion) is >= the CUDA the image was built for.
+#   * native sufficient -> use host libcuda, do NOT add compat.
+#   * native too old     -> prepend compat, then re-probe and fail loud if still bad.
+# Why the version check and not just "does cuInit succeed": on a genuinely old
+# node (e.g. R570 / CUDA 12.8) cuInit on the native libcuda SUCCEEDS, but vLLM's
+# bundled CUDA 12.9 runtime would then fail later with cudaErrorInsufficientDriver
+# -- exactly the case compat is for. Checking the driver version up front catches
+# that, while the cuInit/device check still catches the 803 mismatch when compat
+# is wrongly in play. Correct for old, current, and future drivers, nothing to
+# maintain except the image's own CUDA constant below (tied to the base image).
 
-# The base image (vllm:0.22.0-cu129) already ships the R575 forward-compat libs
-# at /usr/local/cuda/compat (verified: libcuda.so.575.57.08 + ptxjitcompiler +
-# nvvm). Nothing is installed; we only need to load them AHEAD of the 570 libcuda
-# that the NVIDIA container runtime injects, so the full 12.9 runtime + Triton
-# JIT + CUDA-graph capture work on the older kernel driver (supported because
-# the H200 is a datacenter GPU). The loop stays tolerant of a path change in a
-# future base-image bump.
-COMPAT_FOUND=0
-for COMPAT in /usr/local/cuda/compat /usr/local/cuda-12.9/compat; do
-    # Only use it if it actually contains a libcuda (avoids breaking LD path).
-    if ls "${COMPAT}"/libcuda.so* >/dev/null 2>&1; then
-        export LD_LIBRARY_PATH="${COMPAT}:${LD_LIBRARY_PATH:-}"
-        COMPAT_FOUND=1
-        echo "[startup] CUDA forward-compat enabled via ${COMPAT}"
-        # Confirm the compat lib is actually first (per NVIDIA's troubleshooting).
-        echo "[startup] nvidia-smi sees CUDA: $(nvidia-smi 2>/dev/null | grep -oE 'CUDA Version: [0-9.]+' | head -1)"
-        break
+# CUDA the IMAGE was built for, encoded as 1000*major + 10*minor (cu129 -> 12090).
+# This is a property of THIS image's base (FROM ...cu129...), not a node guess;
+# bump it only when the base image's CUDA changes.
+IMAGE_CUDA_VERSION="${IMAGE_CUDA_VERSION:-12090}"
+
+# Fast CUDA probe via ctypes (no torch import -> sub-second). Uses the driver API
+# (libcuda.so.1 -- stable SONAME across CUDA majors). Exit codes:
+#   0   native/current libcuda is SUFFICIENT (cuInit OK, driver CUDA >= image, >=1 dev)
+#   10  driver too old: cuDriverGetVersion < image CUDA  -> needs compat
+#   100 init OK but no device visible
+#   201 no loadable libcuda at all
+#   <CUDA rc> cuInit/cuDeviceGetCount returned a nonzero CUDA error (e.g. 803)
+# Reads IMAGE_CUDA_VERSION from the environment; honours whatever LD_LIBRARY_PATH
+# is in effect when called.
+export IMAGE_CUDA_VERSION
+_cuda_probe() {
+    python3 - <<'PY'
+import ctypes, os, sys
+need = int(os.environ.get("IMAGE_CUDA_VERSION", "12090"))
+try:
+    lib = ctypes.CDLL("libcuda.so.1")
+except OSError:
+    sys.exit(201)                       # no loadable libcuda at all
+# cuDriverGetVersion does NOT require cuInit and reports the MAX CUDA the
+# currently-loaded driver supports (e.g. 13000 for R580, 12080 for R570).
+drv = ctypes.c_int(0)
+if lib.cuDriverGetVersion(ctypes.byref(drv)) != 0:
+    sys.exit(204)
+sys.stderr.write("[probe] libcuda max CUDA=%d, image needs=%d\n" % (drv.value, need))
+rc = lib.cuInit(0)
+if rc != 0:
+    sys.exit(rc if rc < 256 else 202)   # nonzero CUDA error, e.g. 803
+if drv.value < need:
+    sys.exit(10)                        # driver too old for the image's runtime
+n = ctypes.c_int()
+rc = lib.cuDeviceGetCount(ctypes.byref(n))
+if rc != 0:
+    sys.exit(rc if rc < 256 else 203)
+sys.exit(0 if n.value > 0 else 100)     # 100 = init OK but no device visible
+PY
+}
+
+# Informational only (the probe makes the decision, not this string). nvidia-smi
+# resolves the CUDA version from whichever libcuda is on the path, so read it
+# BEFORE we touch LD_LIBRARY_PATH to reflect the true native host driver.
+_HOST_CUDA="$(nvidia-smi 2>/dev/null | grep -oE 'CUDA Version: [0-9.]+' | head -1 || true)"
+
+if _cuda_probe; then
+    echo "[startup] native host driver is sufficient for the image's CUDA (${_HOST_CUDA:-version unknown}); forward-compat NOT needed -> using host libcuda directly."
+else
+    _probe_rc=$?
+    # rc=100 means the driver was fine but no GPU was visible -- compat won't fix
+    # that (it's an allocation/scheduling problem), so don't mask it.
+    if [ "${_probe_rc}" -eq 100 ]; then
+        echo "[startup] FATAL: CUDA initialized but no GPU is visible to this pod (rc=100); check the accelerator allocation, not forward-compat." >&2
+        exit 1
     fi
-done
-# Track explicitly (LD_LIBRARY_PATH may be pre-set by OICM, so don't test that).
-[ "${COMPAT_FOUND}" -eq 0 ] && echo "[startup] WARNING: no cuda-compat dir found; cu129 on a 570 driver may fail at warmup."
+    echo "[startup] native libcuda not sufficient (rc=${_probe_rc}; 10=driver older than image CUDA); host driver=${_HOST_CUDA:-version unknown} -> attempting forward-compat."
+    _compat_applied=0
+    # Tolerant of a path change in a future base-image bump.
+    for COMPAT in /usr/local/cuda/compat /usr/local/cuda-12.9/compat; do
+        if ls "${COMPAT}"/libcuda.so* >/dev/null 2>&1; then
+            export LD_LIBRARY_PATH="${COMPAT}:${LD_LIBRARY_PATH:-}"
+            _compat_applied=1
+            echo "[startup] forward-compat enabled via ${COMPAT}"
+            break
+        fi
+    done
+    if [ "${_compat_applied}" -eq 0 ]; then
+        echo "[startup] FATAL: native libcuda insufficient and no forward-compat dir was found; cannot start." >&2
+        exit 1
+    fi
+    # Re-probe WITH compat so a genuine mismatch fails here with a clear message
+    # instead of deep inside vLLM with an opaque traceback.
+    if _cuda_probe; then
+        echo "[startup] forward-compat CUDA check OK -> proceeding."
+    else
+        _probe_rc=$?
+        echo "[startup] FATAL: CUDA still not usable WITH forward-compat (rc=${_probe_rc}); driver/runtime mismatch is beyond what these compat libs can bridge." >&2
+        exit 1
+    fi
+fi
 
 # --- Operator-supplied extra flags (OICM "Model Server Arguments" -> EXTRA_ARGS) ---
 #
