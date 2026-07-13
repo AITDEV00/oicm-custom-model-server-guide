@@ -21,6 +21,10 @@ build-vllm-podman-0.24.0: # Build custom model server image for vLLM using Podma
 	@podman build --platform=linux/amd64 --build-arg VLLM_VERSION=0.24.0 -t oicm/vllm:0.24.0 -f vLLM-podman-0.24.0-cu129-amd64/Dockerfile vLLM-podman-0.24.0-cu129-amd64
 	@podman tag oicm/vllm:0.24.0 localhost/oicm/vllm:0.24.0-cu129
 
+build-vllm-podman-0.25.0: # Build custom model server image for vLLM using Podman
+	@podman build --platform=linux/amd64 --build-arg VLLM_VERSION=0.25.0 -t oicm/vllm:0.25.0 -f vLLM-podman-0.25.0-cu129-amd64/Dockerfile vLLM-podman-0.25.0-cu129-amd64
+	@podman tag oicm/vllm:0.25.0 localhost/oicm/vllm:0.25.0-cu129
+
 build-vllm-podman-minimaxm3: # Build custom model server image for vLLM using Podman
 	@podman build --platform=linux/amd64 -t oicm/vllm:minimaxm3-cu129-amd64 -f vLLM-podman-minimaxm3-cu129-amd64/Dockerfile vLLM-podman-minimaxm3-cu129-amd64
 	@podman tag oicm/vllm:minimaxm3-cu129-amd64 localhost/oicm/vllm:minimaxm3-cu129-amd64
