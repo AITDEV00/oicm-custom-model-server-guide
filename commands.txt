@@ -11,6 +11,12 @@ podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationa
 podman tag localhost/oicm/vllm:0.22.0-cu129 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.22.0-cu129
 podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.22.0-cu129
 
+podman tag localhost/oicm/vllm:0.24.0-cu129 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.24.0-cu129
+podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.24.0-cu129
+
+podman tag localhost/oicm/vllm:0.25.0-cu129 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.25.0-cu129
+podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.25.0-cu129
+
 #login to al ain cluster
 podman login --tls-verify=false registry.adeoaiengine.ecouncil.ae custom-images CustomImages123
 
