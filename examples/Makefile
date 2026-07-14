@@ -35,6 +35,10 @@ build-vllm-podman-nightly: # Build custom model server image for vLLM using Podm
 build-sglang: # Build custom model server image for SGLang
 	@docker build --platform=linux/amd64 -t oicm/sglang:0.5.9-cu129 -f sglang/Dockerfile SGLang
 
+build-sglang-podman-0.5.14: # Build custom model server image for SGLang using Podman
+	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.14-cu129-amd64 -f SGLang-podman-v0.5.14-cu129-amd64/Dockerfile SGLang-podman-v0.5.14-cu129-amd64
+	@podman tag oicm/sglang:0.5.14-cu129-amd64 localhost/oicm/sglang:0.5.14-cu129-amd64
+
 build-cputests: # Build CPU + Silero-VAD diagnostic image
 	@podman build --platform=linux/amd64 -t cpu-vad-diag:latest -f cputests/Dockerfile cputests
 
