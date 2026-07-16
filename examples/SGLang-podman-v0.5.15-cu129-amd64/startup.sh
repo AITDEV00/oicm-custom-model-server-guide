@@ -126,7 +126,7 @@ export TMPDIR="${TMPDIR:-/tmp}"
 
 # --- 4. Cache Configurations ---
 # Point SGLang and CUDA caches to local ephemeral ext4 (/tmp) to avoid NFS lock
-# contention. Verified against the SGLang 0.5.14 source:
+# contention. Verified against the SGLang 0.5.15.post1 source:
 #   * SGLANG_CACHE_DIR (default ~/.cache/sglang) is SGLang's own cache root --
 #     initialize_cache() creates inductor_cache/ + triton_cache/ subdirs under it
 #     and sets TORCHINDUCTOR_CACHE_DIR/TRITON_CACHE_DIR itself. Pinning it to /tmp
@@ -146,12 +146,13 @@ mkdir -p "${SGLANG_CACHE_DIR}" "${SGLANG_DG_CACHE_DIR}" "${TORCHINDUCTOR_CACHE_D
 # Prometheus multiprocess dir for --enable-metrics. SGLang uses multiprocess
 # collection (tokenizer/scheduler/detokenizer are separate processes), so the
 # /metrics handler calls prometheus_client.multiprocess.MultiProcessCollector,
-# which requires a writable PROMETHEUS_MULTIPROC_DIR. Verified in 0.5.14 source:
-# set_prometheus_multiproc_dir() (utils/common.py:1550) DOES handle the unset
-# case itself -- it calls tempfile.TemporaryDirectory() (no dir=), which lands
-# under TMPDIR -> /tmp. So the default is safe. We still set it explicitly to
-# (a) make the location predictable and co-located with the other SGLang caches,
-# and (b) guard against a cluster variant where TMPDIR points somewhere odd.
+# which requires a writable PROMETHEUS_MULTIPROC_DIR. Verified in 0.5.15.post1
+# source: set_prometheus_multiproc_dir() (utils/common.py:1550) DOES handle the
+# unset case itself -- it calls tempfile.TemporaryDirectory() (no dir=), which
+# lands under TMPDIR -> /tmp. So the default is safe. We still set it explicitly
+# to (a) make the location predictable and co-located with the other SGLang
+# caches, and (b) guard against a cluster variant where TMPDIR points somewhere
+# odd.
 # When set, SGLang creates a sub-TemporaryDirectory *inside* this dir, so it
 # must exist and be writable -- hence the mkdir. Set BEFORE the server imports
 # prometheus_client (it does, via add_prometheus_middleware at startup).
@@ -453,7 +454,7 @@ if [[ "${DEBUG_DUMP:-1}" != "0" ]]; then
     echo "[debug]   torch: $(python3 -c 'import torch; print(torch.__version__, "CUDA:", torch.version.cuda, "available:", torch.cuda.is_available())' 2>&1 || echo 'import failed')"
     echo "[debug]   diffusers: $(python3 -c 'import diffusers; print(diffusers.__version__)' 2>&1 || echo 'NOT INSTALLED')"
     echo "[debug]   transformers: $(python3 -c 'import transformers; print(transformers.__version__)' 2>&1 || echo 'NOT INSTALLED')"
-    echo "[debug]   bitsandbytes: $(python3 -c 'import bitsandbytes; print(bitsandbytes.__version__)' 2>&1 || echo 'NOT INSTALLED')  # only for MIG-slice diffusion (ideogram-4-nf4)"
+    echo "[debug]   bitsandbytes: $(python3 -c 'import bitsandbytes; print(bitsandbytes.__version__)' 2>&1 || echo 'NOT INSTALLED')  # only for MIG-slice diffusion (ideogram-4-nf4); removed from this image"
     echo "[debug]   triton: $(python3 -c 'import triton; print(triton.__version__)' 2>&1 || echo 'NOT INSTALLED')"
     echo "[debug]   fastvideo: $(python3 -c 'import fastvideo; print(fastvideo.__version__)' 2>&1 || echo 'NOT INSTALLED')"
     echo "[debug]   prometheus_client: $(python3 -c 'import prometheus_client; print(prometheus_client.__version__)' 2>&1 || echo 'NOT INSTALLED')"
@@ -579,7 +580,7 @@ else
     # --- LLM / embedding path (python3 -m sglang.launch_server) ---
     # Full flag set: --enable-metrics for /metrics scrape, --served-model-name
     # for model routing, --tp-size for tensor parallelism. All verified valid
-    # in launch_server's argparser on 0.5.14.
+    # in launch_server's argparser on 0.5.15.post1.
     LAUNCH_ARGS=(
       --host=0.0.0.0
       --port=8080

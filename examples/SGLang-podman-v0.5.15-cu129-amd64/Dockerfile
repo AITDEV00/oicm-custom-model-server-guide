@@ -8,7 +8,7 @@
 # cu129 build. The runtime decides CUDA forward-compat per-node (see startup.sh):
 # H200 nodes on R580/CUDA 13.0 run this image natively, while any older nodes
 # (e.g. R570/CUDA 12.8) fall back to the forward-compat libs the base ships.
-FROM docker.io/lmsysorg/sglang:v0.5.14-cu129
+FROM docker.io/lmsysorg/sglang:v0.5.15.post1-cu129
 
 # OICM's Service and k8s /health probe target 8080 (confirmed in diagnostic).
 EXPOSE 8080
@@ -21,28 +21,6 @@ RUN set -ex && \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git gcc curl && \
     rm -rf /var/lib/apt/lists/*
-
-# bitsandbytes for NF4 / 8-bit quantization. ONLY needed for the diffusion
-# server (sglang serve) loading NF4-quantized image models -- in practice this
-# means ideogram-4-nf4 served from a MIG slice on H200. LLM/embedding models
-# (python3 -m sglang.launch_server) don't load bitsandbytes. Installed as root
-# into the system site-packages so the non-root runner user can import it.
-# Pinned to >=0.46.1 for the kernels SGLang's bnb loader expects.
-# (Removed from v0.5.15.cu129-amd64 because no current model needs it -- add
-# back here only when serving a diffusion NF4 model on a MIG slice.)
-RUN pip install --no-cache-dir "bitsandbytes>=0.46.1"
-
-# Patch SGLang's diffusion-server NVML fallback to catch NVMLError_NoPermission
-# (raised on MIG-in-container), not just NVMLError_NotSupported. Upstream
-# already has the torch.cuda fallback -- it just catches too narrow an exception.
-# This is ONLY needed for the diffusion server (sglang serve, e.g. ideogram-4-nf4)
-# running on a MIG slice; LLM/embedding models (python3 -m sglang.launch_server)
-# are unaffected. Kept here unconditionally because the image is model-agnostic.
-# See: multimodal_gen/runtime/platforms/cuda.py, NvmlCudaPlatform.get_device_total_memory
-# The assert makes a future image where that block moved fail the build loudly
-# instead of silently shipping unpatched.
-RUN F="$(python3 -c 'import sglang,os;print(os.path.dirname(sglang.__file__))')/multimodal_gen/runtime/platforms/cuda.py" && \
-    python3 -c "import sys; f=sys.argv[1]; s=open(f).read(); old='        try:\n            return int(pynvml.nvmlDeviceGetMemoryInfo(handle).total)\n        except pynvml.NVMLError_NotSupported:\n            return int(torch.cuda.get_device_properties(device_id).total_memory)'; new='        try:\n            return int(pynvml.nvmlDeviceGetMemoryInfo(handle).total)\n        except pynvml.NVMLError:  # incl. NVMLError_NoPermission on MIG-in-container\n            return int(torch.cuda.get_device_properties(device_id).total_memory)'; assert s.count(old)==1, f'anchor count {s.count(old)} != 1 - source moved; re-inspect cuda.py'; open(f,'w').write(s.replace(old,new)); print('patched:', f)" "$F"
 
 # NOTE: CUDA forward-compatibility libs are NOT installed here -- the cu129 base
 # image ALREADY ships them at /usr/local/cuda/compat/ (an R575-era libcuda +
