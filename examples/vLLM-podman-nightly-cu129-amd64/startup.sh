@@ -55,18 +55,26 @@ fi
 # Export so any child/inspection sees the resolved base.
 export BASE_PATH
 
-# OICM's download layout nests the model under <base>/app/download/base_model.
-export BASE_DOWNLOAD_FOLDER="${BASE_PATH}/app/download"
-
-# In data-volume mode the model is the volume root; otherwise it's base_model/.
-if [[ "${USE_DATA_VOLUME:-}" == "True" ]]; then
-    MODEL_DOWNLOAD_FOLDER="${BASE_PATH}"
+# --- Dynamic Model Discovery (Dirty PVC & Subfolder Safe) ---
+# First, check if the operator explicitly provided a valid path via environment variables
+if [ -n "${MODEL_DOWNLOAD_FOLDER:-}" ] && { [ -f "${MODEL_DOWNLOAD_FOLDER}/config.json" ] || [ -f "${MODEL_DOWNLOAD_FOLDER}/params.json" ]; }; then
+    echo "[startup] Operator explicitly provided valid MODEL_DOWNLOAD_FOLDER: ${MODEL_DOWNLOAD_FOLDER}"
 else
-    # Default path; OICM may override MODEL_DOWNLOAD_FOLDER directly, so honor it.
-    DEFAULT_MODEL_DOWNLOAD_FOLDER="${BASE_DOWNLOAD_FOLDER}/base_model"
-    MODEL_DOWNLOAD_FOLDER="${MODEL_DOWNLOAD_FOLDER:-${DEFAULT_MODEL_DOWNLOAD_FOLDER}}"
+    # Otherwise, safely scan for the newest model manifest (config.json or params.json).
+    # This safely bypasses nested HuggingFace repository structures and strictly ignores stale/abandoned models left on reused PVCs.
+    # Note: '|| true' prevents SIGPIPE from crashing the script when head closes the pipe early.
+    TARGET_MANIFEST=$(find "${BASE_PATH}" -maxdepth 10 -type f \( -name "config.json" -o -name "params.json" \) -printf '%T@ %p\n' 2>/dev/null | sort -n -r | head -n 1 | cut -d' ' -f2 || true)
+
+    if [ -z "${TARGET_MANIFEST}" ]; then
+        echo "[startup] FATAL: Crawled ${BASE_PATH} (up to 10 levels) but found zero config.json or params.json files." >&2
+        exit 1
+    fi
+
+    # Extract the exact directory containing the manifest to pass to vLLM
+    MODEL_DOWNLOAD_FOLDER=$(dirname "${TARGET_MANIFEST}")
+    echo "[startup] Discovered active model root at: ${MODEL_DOWNLOAD_FOLDER}"
 fi
-echo "[startup] MODEL_DOWNLOAD_FOLDER=${MODEL_DOWNLOAD_FOLDER}"
+export MODEL_DOWNLOAD_FOLDER
 
 # --- Writable HOME (because /home/runner is read-only on this platform) ---
 
