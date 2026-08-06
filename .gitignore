@@ -1,1 +1,4 @@
 *.tar
+
+# MkDocs build output
+/site/
