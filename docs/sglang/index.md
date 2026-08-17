@@ -17,3 +17,4 @@ note that SGLang speculative decoding uses scalar flags, not JSON.
 | [v0.5.14](v0.5.14.md) | `docker.io/lmsysorg/sglang:v0.5.14-cu129` | |
 | [v0.5.15](v0.5.15.md) | `docker.io/lmsysorg/sglang:v0.5.15.post1-cu129` | GLM-5.2 HiCache |
 | [v0.5.16](v0.5.16.md) | `docker.io/lmsysorg/sglang:v0.5.16-cu129` | DeepSeek-V4 + DSpark |
+| [v0.5.17](v0.5.17.md) | `docker.io/lmsysorg/sglang:v0.5.17-cu129` | |
