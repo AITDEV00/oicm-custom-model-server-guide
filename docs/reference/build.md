@@ -10,6 +10,7 @@ All image build targets live in `examples/Makefile`. Each builds
 |--------|-------|
 | `build-vllm` | vLLM docker, v0.19.0 |
 | `build-vllm-podman-0.22.0` … `0.25.1` | vLLM podman versions |
+| `build-vllm-podman-0.27.1` | vLLM podman, `vllm[audio]` + librosa |
 | `build-vllm-podman-minimaxm3` | MiniMax-M3 |
 | `build-vllm-podman-nightly` | Nightly |
 | `build-sglang` | SGLang docker, v0.5.9 |

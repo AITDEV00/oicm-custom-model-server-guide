@@ -20,5 +20,6 @@ There is also a non-podman `vLLM/` baseline (Dockerfile + startup.sh only).
 | [v0.24.0](v0.24.0.md) | `vllm/vllm-openai:v0.24.0-cu129` | NVFP4 W4A4 models |
 | [v0.25.0](v0.25.0.md) | `vllm/vllm-openai:v0.25.0-cu129` | |
 | [v0.25.1](v0.25.1.md) | `vllm/vllm-openai:v0.25.1-cu129` | DiffusionGemma / Gemma-4 |
+| [v0.27.1](v0.27.1.md) | `vllm/vllm-openai:v0.27.1-cu129` | `vllm[audio]` + librosa |
 | [MiniMax-M3](minimaxm3.md) | `vllm/vllm-openai:minimax-m3-x86_64-cu129` | |
 | [Nightly](nightly.md) | `vllm/vllm-openai:cu129-nightly-x86_64` | |
