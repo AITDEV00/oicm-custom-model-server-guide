@@ -20,6 +20,10 @@ podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationa
 podman tag localhost/oicm/vllm:0.25.1-cu129 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.25.1-cu129
 podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/adeo-vllm:0.25.1-cu129
 
+# pushing vLLM v0.27.1 to Al Ain
+podman tag localhost/oicm/vllm:0.27.1-cu129 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/vllm:0.27.1-cu129
+podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/vllm:0.27.1-cu129
+
 #login to al ain cluster
 podman login --tls-verify=false registry.adeoaiengine.ecouncil.ae custom-images CustomImages123
 
