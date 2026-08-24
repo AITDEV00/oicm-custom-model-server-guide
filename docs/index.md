@@ -30,7 +30,7 @@ A custom model server must satisfy the OICM platform contract. See the
 cd examples
 make build-vllm            # docker, v0.19.0
 make build-vllm-podman-0.27.1  # vllm[audio] + librosa
-make build-sglang-podman-0.5.17
+make build-sglang-podman-0.5.18
 make build-diagnostics
 make build-cputests
 ```

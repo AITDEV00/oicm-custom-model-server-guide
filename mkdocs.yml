@@ -84,6 +84,8 @@ nav:
       - v0.5.14: sglang/v0.5.14.md
       - v0.5.15: sglang/v0.5.15.md
       - v0.5.16: sglang/v0.5.16.md
+      - v0.5.17: sglang/v0.5.17.md
+      - v0.5.18: sglang/v0.5.18.md
   - Diagnostics & tooling:
       - diagnostics/index.md
       - Diagnostics image: diagnostics/diagnostics.md

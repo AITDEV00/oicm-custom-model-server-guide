@@ -18,3 +18,4 @@ note that SGLang speculative decoding uses scalar flags, not JSON.
 | [v0.5.15](v0.5.15.md) | `docker.io/lmsysorg/sglang:v0.5.15.post1-cu129` | GLM-5.2 HiCache |
 | [v0.5.16](v0.5.16.md) | `docker.io/lmsysorg/sglang:v0.5.16-cu129` | DeepSeek-V4 + DSpark |
 | [v0.5.17](v0.5.17.md) | `docker.io/lmsysorg/sglang:v0.5.17-cu129` | |
+| [v0.5.18](v0.5.18.md) | `docker.io/lmsysorg/sglang:v0.5.18-cu129` | Qwen3.5-122B & Qwen3.6-35B HiCache (PR #33639) |

@@ -14,7 +14,7 @@ All image build targets live in `examples/Makefile`. Each builds
 | `build-vllm-podman-minimaxm3` | MiniMax-M3 |
 | `build-vllm-podman-nightly` | Nightly |
 | `build-sglang` | SGLang docker, v0.5.9 |
-| `build-sglang-podman-0.5.14/0.5.15/0.5.16/0.5.17` | SGLang podman versions |
+| `build-sglang-podman-0.5.14/0.5.15/0.5.16/0.5.17/0.5.18` | SGLang podman versions |
 | `build-cputests` | cputests diagnostic |
 | `build-diagnostics` | diagnostics image |
 

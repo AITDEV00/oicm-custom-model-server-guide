@@ -71,6 +71,14 @@ podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationa
 podman tag localhost/oicm/sglang:0.5.16-cu129-amd64 harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.16-cu129-amd64
 podman push --tls-verify=false harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.16-cu129-amd64
 
+# pushing SGLang-podman-v0.5.18-cu129-amd64 to Al Ain
+podman tag localhost/oicm/sglang:0.5.18-cu129-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.18-cu129-amd64
+podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.18-cu129-amd64
+
+# pushing SGLang-podman-v0.5.18-cu129-amd64 to Abu Dhabi
+podman tag localhost/oicm/sglang:0.5.18-cu129-amd64 harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.18-cu129-amd64
+podman push --tls-verify=false harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.18-cu129-amd64
+
 # pushing diagnostics to abu dhabi harbor
 podman tag localhost/oicm/diagnostics:latest harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/diagnostics:latest
 podman push --tls-verify=false harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/diagnostics:latest
