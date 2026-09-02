@@ -88,3 +88,31 @@ build-diagnostics: # Build lightweight OICM diagnostic image
 
 # podman save -o diagnostics-oicm.tar localhost/oicm/diagnostics:latest
 # rsync -vP --append-verify -e "ssh -c aes128-gcm@openssh.com" diagnostics-oicm.tar adeo@10.34.104.99:/home/adeo
+build-vllm-podman-vibevoice-awq: ## Build custom model server image for VibeVoice ASR (AWQ int4) on vLLM 0.27.1
+	@podman build --platform=linux/amd64 -t oicm/vllm:vibevoice-awq-0.27.1 -f vLLM-podman-vibevoice-awq-0.27.1-cu129-amd64/Dockerfile vLLM-podman-vibevoice-awq-0.27.1-cu129-amd64
+	@podman tag oicm/vllm:vibevoice-awq-0.27.1 localhost/oicm/vllm:vibevoice-awq-0.27.1-cu129
+
+# Run VibeVoice ASR locally (GPU, host network). EXTRA_ARGS follow the model
+# card recommendations: --trust-remote-code and --dtype float16 are INJECTED BY
+# startup.sh (see image), so they are not repeated here. We deliberately do NOT
+# pass --quantization awq_marlin: vLLM auto-promotes AWQ to Marlin on SM90/SM120
+# (verified in engine log: "Using MarlinLinearKernel for AutoAWQMarlinLinearMethod").
+# --no-enable-prefix-caching matches upstream: the plugin salts every audio item
+# with a random value to bypass prefix caching, so enabling it is pure overhead.
+run-vllm-podman-vibevoice-awq: ## Run VibeVoice ASR container locally (GPU)
+	@podman rm -f vibevoice-asr >/dev/null 2>&1 || true
+	@podman run -d --name vibevoice-asr \
+	  --device nvidia.com/gpu=all --security-opt label=disable \
+	  --network host \
+	  -v /srv/shared/download/hf/lemuriandezapada/VibeVoice-ASR-awq-int4:/pvc-home/model:ro,Z \
+	  -e INIT_CONTAINER_USE_PVC=True -e PVC_PATH=/pvc-home \
+	  -e MODEL_ID=vibevoice \
+	  -e EXTRA_ARGS="--max-model-len 32768 --max-num-seqs 16 --gpu-memory-utilization 0.85 --no-enable-prefix-caching --enable-chunked-prefill --port 8321" \
+	  localhost/oicm/vllm:vibevoice-awq-0.27.1-cu129
+	@echo "vibevoice-asr starting on http://localhost:8321 (model load ~3.5 min)"
+	@echo "follow with: podman logs -f vibevoice-asr"
+
+benchmark-vibevoice-awq: ## Run RTF benchmark against a running vibevoice-asr container
+	@python3 vLLM-podman-vibevoice-awq-0.27.1-cu129-amd64/rtf_benchmark.py \
+	  --base-url http://localhost:8321 \
+	  --audio-dir /home/jyao/ADEO/vibevoice.cpp/audio --runs 3 --warmup 1

@@ -1,0 +1,472 @@
+diff --git a/vibevoice/modular/modeling_vibevoice.py b/vibevoice/modular/modeling_vibevoice.py
+index a4ecbab..3ed6b7e 100644
+--- a/vibevoice/modular/modeling_vibevoice.py
++++ b/vibevoice/modular/modeling_vibevoice.py
+@@ -484,7 +484,10 @@ class VibeVoiceForConditionalGeneration(VibeVoicePreTrainedModel):
+             attentions=outputs.attentions,
+         )
+ 
+-AutoModel.register(VibeVoiceConfig, VibeVoiceModel)
++try:
++    AutoModel.register(VibeVoiceConfig, VibeVoiceModel)
++except ValueError:
++    pass  # already registered by transformers (or a prior import)
+ AutoModelForCausalLM.register(VibeVoiceConfig, VibeVoiceForConditionalGeneration)
+ 
+ __all__ = [
+diff --git a/vibevoice/modular/modeling_vibevoice_asr.py b/vibevoice/modular/modeling_vibevoice_asr.py
+index 4663d3f..85efa52 100644
+--- a/vibevoice/modular/modeling_vibevoice_asr.py
++++ b/vibevoice/modular/modeling_vibevoice_asr.py
+@@ -512,7 +512,10 @@ class VibeVoiceASRForConditionalGeneration(VibeVoiceASRPreTrainedModel, Generati
+         
+         return model_inputs
+ 
+-AutoModel.register(VibeVoiceASRConfig, VibeVoiceASRModel)
++try:
++    AutoModel.register(VibeVoiceASRConfig, VibeVoiceASRModel)
++except ValueError:
++    pass  # already registered by transformers (or a prior import)
+ AutoModelForCausalLM.register(VibeVoiceASRConfig, VibeVoiceASRForConditionalGeneration)
+ 
+ __all__ = [
+diff --git a/vibevoice/modular/modeling_vibevoice_streaming.py b/vibevoice/modular/modeling_vibevoice_streaming.py
+index c4488c8..c4a537d 100644
+--- a/vibevoice/modular/modeling_vibevoice_streaming.py
++++ b/vibevoice/modular/modeling_vibevoice_streaming.py
+@@ -182,7 +182,10 @@ class VibeVoiceStreamingModel(VibeVoiceStreamingPreTrainedModel):
+         )
+ 
+ 
+-AutoModel.register(VibeVoiceStreamingConfig, VibeVoiceStreamingModel)
++try:
++    AutoModel.register(VibeVoiceStreamingConfig, VibeVoiceStreamingModel)
++except ValueError:
++    pass  # already registered by transformers (or a prior import)
+ 
+ __all__ = [
+     "VibeVoiceStreamingPreTrainedModel",
+diff --git a/vibevoice/modular/modular_vibevoice_diffusion_head.py b/vibevoice/modular/modular_vibevoice_diffusion_head.py
+index 59de50f..0781f3d 100644
+--- a/vibevoice/modular/modular_vibevoice_diffusion_head.py
++++ b/vibevoice/modular/modular_vibevoice_diffusion_head.py
+@@ -280,7 +280,10 @@ class VibeVoiceDiffusionHead(PreTrainedModel):
+         return x
+ 
+ 
+-AutoModel.register(VibeVoiceDiffusionHeadConfig, VibeVoiceDiffusionHead)
++try:
++    AutoModel.register(VibeVoiceDiffusionHeadConfig, VibeVoiceDiffusionHead)
++except ValueError:
++    pass  # already registered by transformers (or a prior import)
+ 
+ __all__ = [
+     "VibeVoiceDiffusionHead",
+diff --git a/vibevoice/modular/modular_vibevoice_text_tokenizer.py b/vibevoice/modular/modular_vibevoice_text_tokenizer.py
+index 9532d9f..413ba03 100644
+--- a/vibevoice/modular/modular_vibevoice_text_tokenizer.py
++++ b/vibevoice/modular/modular_vibevoice_text_tokenizer.py
+@@ -4,7 +4,10 @@ from typing import List, Optional, Union
+ 
+ from transformers.utils import logging
+ from transformers.models.qwen2.tokenization_qwen2 import Qwen2Tokenizer
+-from transformers.models.qwen2.tokenization_qwen2_fast import Qwen2TokenizerFast
++try:
++    from transformers.models.qwen2.tokenization_qwen2_fast import Qwen2TokenizerFast
++except ImportError:  # transformers >= 5.x: only exposed via the lazy top-level attr
++    from transformers import Qwen2TokenizerFast
+ 
+ logger = logging.get_logger(__name__)
+ 
+diff --git a/vibevoice/modular/modular_vibevoice_tokenizer.py b/vibevoice/modular/modular_vibevoice_tokenizer.py
+index 454f9c1..909d338 100644
+--- a/vibevoice/modular/modular_vibevoice_tokenizer.py
++++ b/vibevoice/modular/modular_vibevoice_tokenizer.py
+@@ -1197,8 +1197,14 @@ class VibeVoiceSemanticTokenizerModel(PreTrainedModel):
+         sampled_latents, _ = self.sampling(encoder_output, dist_type='none')
+         return None, sampled_latents
+ 
+-AutoModel.register(VibeVoiceAcousticTokenizerConfig, VibeVoiceAcousticTokenizerModel)
+-AutoModel.register(VibeVoiceSemanticTokenizerConfig, VibeVoiceSemanticTokenizerModel)
++try:
++    AutoModel.register(VibeVoiceAcousticTokenizerConfig, VibeVoiceAcousticTokenizerModel)
++except ValueError:
++    pass  # already registered by transformers (or a prior import)
++try:
++    AutoModel.register(VibeVoiceSemanticTokenizerConfig, VibeVoiceSemanticTokenizerModel)
++except ValueError:
++    pass  # already registered by transformers (or a prior import)
+ 
+ __all__ = [
+     "VibeVoiceTokenizerStreamingCache",
+diff --git a/vllm_plugin/__init__.py b/vllm_plugin/__init__.py
+index 989acb4..93c316e 100644
+--- a/vllm_plugin/__init__.py
++++ b/vllm_plugin/__init__.py
+@@ -28,7 +28,10 @@ def register_vibevoice():
+     - VibeVoiceForCausalLM with vLLM ModelRegistry
+     """
+     # Register the configuration class with transformers
+-    AutoConfig.register("vibevoice", VibeVoiceConfig)
++    try:
++        AutoConfig.register("vibevoice", VibeVoiceConfig)
++    except ValueError:
++        pass  # already registered (re-import or newer transformers)
+ 
+     # Register the tokenizer with transformers.
+     # IMPORTANT (ASR): Align with the PyTorch ASR path.
+diff --git a/vllm_plugin/model.py b/vllm_plugin/model.py
+index bd9060f..7dfc2bf 100644
+--- a/vllm_plugin/model.py
++++ b/vllm_plugin/model.py
+@@ -6,7 +6,9 @@ integration for speech-to-text inference.
+ """
+ 
+ from typing import List, Optional, Tuple, Union, Dict, Any, Iterable, Mapping, Sequence
++import copy
+ import os
++from pathlib import Path
+ import torch
+ import torch.nn as nn
+ import numpy as np
+@@ -132,6 +134,59 @@ from vibevoice.modular.configuration_vibevoice import (
+ )
+ 
+ 
++def _patch_vllm_attention_context_aliases() -> None:
++    try:
++        from vllm.model_executor.layers.attention import attention as attention_module
++    except Exception:
++        return
++
++    if getattr(attention_module, "_vibevoice_attention_alias_patch", False):
++        return
++
++    original_get_attention_context = attention_module.get_attention_context
++
++    def _resolve_layer_name(forward_context, layer_name: str) -> str:
++        if layer_name in forward_context.no_compile_layers:
++            return layer_name
++
++        candidates = []
++        if layer_name.startswith("model."):
++            candidates.append(f"language_model.{layer_name}")
++        if layer_name.startswith("language_model.model."):
++            candidates.append(layer_name.removeprefix("language_model."))
++        if layer_name.startswith("language_model."):
++            candidates.append(layer_name.removeprefix("language_model."))
++
++        for candidate in candidates:
++            if candidate in forward_context.no_compile_layers:
++                return candidate
++
++        raise KeyError(layer_name)
++
++    def _wrapped_get_attention_context(layer_name: str):
++        try:
++            return original_get_attention_context(layer_name)
++        except KeyError:
++            forward_context = attention_module.get_forward_context()
++            resolved_layer_name = _resolve_layer_name(forward_context, layer_name)
++            attn_metadata = forward_context.attn_metadata
++            if isinstance(attn_metadata, dict):
++                attn_metadata = attn_metadata[resolved_layer_name]
++            attn_layer = forward_context.no_compile_layers[resolved_layer_name]
++            kv_cache = getattr(attn_layer, "kv_cache", None)
++            if isinstance(kv_cache, (list, tuple)):
++                ve = getattr(forward_context, "virtual_engine", 0)
++                kv_cache = kv_cache[ve] if ve < len(kv_cache) else kv_cache[0]
++            layer_slot_mapping = forward_context.slot_mapping.get(resolved_layer_name)
++            return attn_metadata, attn_layer, kv_cache, layer_slot_mapping
++
++    attention_module.get_attention_context = _wrapped_get_attention_context
++    attention_module._vibevoice_attention_alias_patch = True
++
++
++_patch_vllm_attention_context_aliases()
++
++
+ class SpeechConnector(nn.Module):
+     """Projects speech features to language model hidden dimension.
+     
+@@ -528,6 +583,24 @@ class VibeVoiceProcessingInfo(BaseProcessingInfo):
+             padding_value=config["padding_value"],
+         )
+ 
++    def build_data_parser(self) -> MultiModalDataParser:
++        """Build the vLLM multimodal parser for raw audio inputs.
++
++        vLLM 0.16+ moved parser construction from
++        `BaseMultiModalProcessor._get_data_parser` to the processing-info
++        object. Keep `get_data_parser()` as an alias for compatibility with
++        current vLLM releases that still call it internally.
++        """
++        feature_extractor = self.get_feature_extractor()
++        target_sr = getattr(feature_extractor, "sampling_rate", 24000)
++        return MultiModalDataParser(
++            target_sr=target_sr,
++            expected_hidden_size=self._get_expected_hidden_size(),
++        )
++
++    def get_data_parser(self) -> MultiModalDataParser:
++        return self.build_data_parser()
++
+     def get_audio_token_info(self) -> dict:
+         """
+         Get audio special tokens and their IDs.
+@@ -669,10 +742,15 @@ class VibeVoiceDummyInputsBuilder(BaseDummyInputsBuilder[VibeVoiceProcessingInfo
+         mm_counts: Mapping[str, int],
+         mm_options: Mapping[str, Any] | None = None,
+     ) -> ProcessorInputs:
+-        """Build ProcessorInputs for dummy profiling."""
++        """Build `ProcessorInputs` for vLLM multimodal profiling."""
++        dummy_text = self.get_dummy_text(mm_counts)
++        dummy_mm_data = self.get_dummy_mm_data(seq_len, mm_counts, mm_options)
++        dummy_mm_items = self.info.parse_mm_data(dummy_mm_data, validate=False)
++
+         return ProcessorInputs(
+-            prompt=self.get_dummy_text(mm_counts),
+-            mm_data=self.get_dummy_mm_data(seq_len, mm_counts, mm_options),
++            prompt=dummy_text,
++            mm_data_items=dummy_mm_items,
++            tokenization_kwargs={"truncation": False},
+         )
+ 
+ 
+@@ -707,12 +785,6 @@ class VibeVoiceMultiModalProcessor(BaseMultiModalProcessor[VibeVoiceProcessingIn
+     and manages the prompt token replacement for audio placeholders.
+     """
+     
+-    def _get_data_parser(self) -> MultiModalDataParser:
+-        """Create a data parser with the correct target sample rate (24kHz)."""
+-        # VibeVoice requires 24kHz, not 16kHz (Whisper default)
+-        target_sr = 24000
+-        return MultiModalDataParser(target_sr=target_sr)
+-    
+     def _call_hf_processor(
+         self,
+         prompt: str,
+@@ -748,6 +820,20 @@ class VibeVoiceMultiModalProcessor(BaseMultiModalProcessor[VibeVoiceProcessingIn
+             raw_audio_list = [raw_audio_list]
+         elif not isinstance(raw_audio_list, list):
+             raw_audio_list = list(raw_audio_list)
++
++        # Validate audio BEFORE scheduling. Raised exceptions here surface as
++        # clean 4xx API errors (processor runs in the API-server process).
++        # Without this, a too-short/empty item would reach embed_multimodal,
++        # silently yield 0 embeddings for a scheduled mm item, and trip vLLM's
++        # sanity_check_mm_encoder_outputs assert -> EngineDeadError -> pod crash.
++        for idx, audio in enumerate(raw_audio_list):
++            n = len(audio)
++            if n < 160:  # 160 samples = 6.7 ms at 24 kHz; encoder minimum
++                raise ValueError(
++                    f"audio item {idx}: too short to transcribe "
++                    f"({n} samples; minimum ~160 samples / 0.01s at 24kHz). "
++                    f"The uploaded file is empty, corrupt, or truncated."
++                )
+         
+         # Tokenize prompt directly to preserve <|AUDIO|> as a single token
+         # vLLM will expand it via _get_prompt_updates
+@@ -951,15 +1037,48 @@ class VibeVoiceForCausalLM(nn.Module, SupportsMultiModal, SupportsPP):
+         super().__init__()
+         config = vllm_config.model_config.hf_config
+         self.config = config
++        self._decoder_model_path: str | None = None
+         
+         self.audio_encoder = VibeVoiceAudioEncoder(config)
+         
+         # Pass decoder_config to the language model initialization
+         decoder_config = getattr(config, "decoder_config", config)
++        language_model_vllm_config = vllm_config
++        language_model_prefix = maybe_prefix(prefix, "language_model")
++        decoder_model_path = getattr(config, "vibevoice_decoder_model_path", None)
++        if decoder_model_path:
++            decoder_model_path = str(decoder_model_path).strip()
++            if decoder_model_path:
++                decoder_root = Path(vllm_config.model_config.model)
++                decoder_path = Path(decoder_model_path)
++                if not decoder_path.is_absolute():
++                    decoder_path = decoder_root / decoder_path
++                self._decoder_model_path = str(decoder_path)
++                language_model_vllm_config = copy.deepcopy(vllm_config)
++                language_model_vllm_config.model_config.model = self._decoder_model_path
++                language_model_vllm_config.compilation_config = (
++                    vllm_config.compilation_config
++                )
++                quant_config = getattr(language_model_vllm_config, "quant_config", None)
++                if quant_config is not None:
++                    try:
++                        quant_config.maybe_update_config(self._decoder_model_path)
++                    except Exception:
++                        pass
++                try:
++                    from transformers import AutoConfig
++
++                    decoder_config = AutoConfig.from_pretrained(
++                        self._decoder_model_path,
++                        trust_remote_code=True,
++                    )
++                except Exception:
++                    pass
++                language_model_prefix = prefix
+         self.language_model = init_vllm_registered_model(
+-            vllm_config=vllm_config,
++            vllm_config=language_model_vllm_config,
+             hf_config=decoder_config,
+-            prefix=maybe_prefix(prefix, "language_model"),
++            prefix=language_model_prefix,
+             architectures=["Qwen2ForCausalLM"],
+         )
+         
+@@ -1082,7 +1201,13 @@ class VibeVoiceForCausalLM(nn.Module, SupportsMultiModal, SupportsPP):
+                     if actual_len > 0 and actual_len <= audio_tensor.shape[-1]:
+                         audio_tensor = audio_tensor[..., :actual_len]
+                 if audio_tensor.numel() < 160:
+-                    continue
++                    # Defensive: should be unreachable (processor rejects short
++                    # audio). If hit, pad to minimum length instead of skipping
++                    # — skipping yields 0 embeddings for a scheduled mm item and
++                    # trips sanity_check_mm_encoder_outputs (engine-fatal).
++                    audio_tensor = torch.nn.functional.pad(
++                        audio_tensor, (0, 160 - audio_tensor.numel())
++                    )
+                 
+                 audio_embeds = self.audio_encoder(
+                     audio_tensor,
+@@ -1093,10 +1218,21 @@ class VibeVoiceForCausalLM(nn.Module, SupportsMultiModal, SupportsPP):
+                 embeddings.append(final_embed)
+                 
+             except Exception as e:
+-                print(f"[VibeVoice] Error encoding audio {i}: {e}")
+-                import traceback
+-                traceback.print_exc()
+-                continue
++                # Never return fewer embeddings than scheduled mm items — that
++                # trips sanity_check_mm_encoder_outputs (engine-fatal). Pad the
++                # failed item to the minimum length and encode a placeholder so
++                # the count always matches; the request completes with degraded
++                # audio content instead of crashing the engine.
++                print(f"[VibeVoice] Error encoding audio {i}: {e} — "
++                      f"substituting minimum-length silence")
++                fallback = torch.zeros(160, device=device)
++                embeddings.append(
++                    self.audio_encoder(
++                        fallback,
++                        use_streaming=use_streaming_flag,
++                        segment_duration_s=streaming_segment_duration,
++                    ).squeeze(0)
++                )
+         
+         return tuple(embeddings)
+ 
+@@ -1182,22 +1318,69 @@ class VibeVoiceForCausalLM(nn.Module, SupportsMultiModal, SupportsPP):
+         """
+         # Map weight prefixes for VibeVoice
+         # The checkpoint uses "model." prefix, we need to remap it
+-        mapper = WeightsMapper(
+-            orig_to_new_prefix={
+-                # Audio encoder components: model.X -> audio_encoder.X
+-                "model.acoustic_tokenizer.": "audio_encoder.acoustic_tokenizer.",
+-                "model.semantic_tokenizer.": "audio_encoder.semantic_tokenizer.",
+-                "model.acoustic_connector.": "audio_encoder.acoustic_connector.",
+-                "model.semantic_connector.": "audio_encoder.semantic_connector.",
+-                # Language model: model.language_model.X -> language_model.model.X
+-                "model.language_model.": "language_model.model.",
+-                # LM head: lm_head.X -> language_model.lm_head.X
+-                "lm_head.": "language_model.lm_head.",
+-            }
+-        )
++        prefix_map: dict[str, str | None] = {
++            # Audio encoder components: model.X -> audio_encoder.X
++            "model.acoustic_tokenizer.": "audio_encoder.acoustic_tokenizer.",
++            "model.semantic_tokenizer.": "audio_encoder.semantic_tokenizer.",
++            "model.acoustic_connector.": "audio_encoder.acoustic_connector.",
++            "model.semantic_connector.": "audio_encoder.semantic_connector.",
++        }
++        if self._decoder_model_path:
++            prefix_map.update(
++                {
++                    "model.language_model.": None,
++                    "lm_head.": None,
++                }
++            )
++        else:
++            prefix_map.update(
++                {
++                    # Language model: model.language_model.X -> language_model.model.X
++                    "model.language_model.": "language_model.model.",
++                    # LM head: lm_head.X -> language_model.lm_head.X
++                    "lm_head.": "language_model.lm_head.",
++                }
++            )
++
++        mapper = WeightsMapper(orig_to_new_prefix=prefix_map)
+         
+         loader = AutoWeightsLoader(self)
+-        return loader.load_weights(weights, mapper=mapper)
++        loaded = loader.load_weights(weights, mapper=mapper)
++
++        if self._decoder_model_path:
++            from vllm.model_executor.model_loader.weight_utils import (
++                safetensors_weights_iterator,
++            )
++
++            decoder_weight_files = [
++                str(path)
++                for path in sorted(Path(self._decoder_model_path).glob("*.safetensors"))
++            ]
++            if not decoder_weight_files:
++                raise FileNotFoundError(
++                    f"No decoder safetensors found in {self._decoder_model_path}"
++                )
++            decoder_loader = AutoWeightsLoader(self.language_model)
++            decoder_weights = safetensors_weights_iterator(
++                decoder_weight_files,
++                use_tqdm_on_load=False,
++            )
++            decoder_quant_method = getattr(
++                self.config,
++                "vibevoice_decoder_quantization",
++                None,
++            )
++            if decoder_quant_method == "gptq":
++                decoder_weights = (
++                    (name, weight)
++                    for name, weight in decoder_weights
++                    if not name.endswith(".g_idx")
++                )
++            loaded |= decoder_loader.load_weights(
++                decoder_weights
++            )
++
++        return loaded
+ 
+     def forward(
+         self,
+@@ -1230,21 +1413,14 @@ class VibeVoiceForCausalLM(nn.Module, SupportsMultiModal, SupportsPP):
+         if intermediate_tensors is not None:
+             inputs_embeds = None
+         
+-        # Get the inner model - handle both wrapped and direct language models
+-        language_model = self.language_model
+-        if hasattr(language_model, "language_model"):
+-            language_model = language_model.language_model
+-        
+-        # Call the language model's model (Qwen2Model)
+-        # vLLM V1 passes kv_caches and attn_metadata via context, not arguments
+-        # IMPORTANT: Pass input_ids=None when using inputs_embeds to avoid double embedding
+-        hidden_states = language_model.model(
+-            input_ids=None,  # Always None when we have inputs_embeds
++        model_input_ids = input_ids if inputs_embeds is None else None
++
++        return self.language_model(
++            input_ids=model_input_ids,
+             positions=positions,
+             intermediate_tensors=intermediate_tensors,
+-            inputs_embeds=inputs_embeds
++            inputs_embeds=inputs_embeds,
+         )
+-        return hidden_states
+ 
+ 
+ # Alias for training checkpoint compatibility

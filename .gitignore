@@ -2,3 +2,5 @@
 
 # MkDocs build output
 /site/
+# VibeVoice incident logs (contain real interview content - keep local only)
+examples/vLLM-podman-vibevoice-awq-0.27.1-cu129-amd64/incident-2026-09-02/
