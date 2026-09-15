@@ -75,6 +75,10 @@ build-sglang-podman-0.5.19: # Build custom model server image for SGLang using P
 	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.19-cu129-amd64 -f SGLang-podman-v0.5.19-cu129-amd64/Dockerfile SGLang-podman-v0.5.19-cu129-amd64
 	@podman tag oicm/sglang:0.5.19-cu129-amd64 localhost/oicm/sglang:0.5.19-cu129-amd64
 
+build-sglang-podman-0.5.19-cu130: # Build custom model server image for SGLang using Podman (CUDA 13.0 base, R580-era compat libs)
+	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.19-cu130-amd64 -f SGLang-podman-v0.5.19-cu130-amd64/Dockerfile SGLang-podman-v0.5.19-cu130-amd64
+	@podman tag oicm/sglang:0.5.19-cu130-amd64 localhost/oicm/sglang:0.5.19-cu130-amd64
+
 build-sglang-podman-glm-5.3-flash: # Build custom model server image for SGLang (GLM-5.3-Flash) using Podman
 	@podman build --platform=linux/amd64 -t oicm/sglang:glm-5.3-flash-cu129-amd64 -f SGLang-podman-glm-5.3-flash-cu129-amd64/Dockerfile SGLang-podman-glm-5.3-flash-cu129-amd64
 	@podman tag oicm/sglang:glm-5.3-flash-cu129-amd64 localhost/oicm/sglang:glm-5.3-flash-cu129-amd64
