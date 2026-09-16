@@ -1,0 +1,939 @@
+diff --git a/python/sglang/kernels/jit/csrc/attention/fixup_zero_kv.cuh b/python/sglang/kernels/jit/csrc/attention/fixup_zero_kv.cuh
+index 1db87daaa8..c79231e192 100644
+--- a/python/sglang/kernels/jit/csrc/attention/fixup_zero_kv.cuh
++++ b/python/sglang/kernels/jit/csrc/attention/fixup_zero_kv.cuh
+@@ -68,7 +68,7 @@ __device__ __forceinline__ void vec_neginf_fill(float* ptr, int n) {
+ 
+ // -- main kernel -----------------------------------------------------------
+ 
+-template <typename OutT>
++template <typename OutT, bool kUsePDL>
+ __global__ void fixup_zero_kv_rows_kernel(
+     OutT* __restrict__ out,
+     float* __restrict__ lse,
+@@ -88,14 +88,18 @@ __global__ void fixup_zero_kv_rows_kernel(
+   const int tok = tok_start + blockIdx.x;
+   if (tok >= tok_end) return;
+ 
++  device::PDLWaitPrimary<kUsePDL>();
++
+   // Each block handles one token: zero out[tok] and set lse[tok] = -inf.
+   vec_zero_fill(out + tok * out_stride, out_stride);
+   vec_neginf_fill(lse + tok * lse_stride, lse_stride);
++
++  device::PDLTriggerSecondary<kUsePDL>();
+ }
+ 
+ // -- host launcher ---------------------------------------------------------
+ 
+-template <typename OutT>
++template <typename OutT, bool kUsePDL>
+ void fixup_zero_kv_rows(
+     tvm::ffi::TensorView out,
+     tvm::ffi::TensorView lse,
+@@ -126,14 +130,15 @@ void fixup_zero_kv_rows(
+   dim3 grid(blocks_x, bs);
+   dim3 block(kFixupBlockSize);
+ 
+-  LaunchKernel(grid, block, device.unwrap())(
+-      fixup_zero_kv_rows_kernel<OutT>,
+-      static_cast<OutT*>(out.data_ptr()),
+-      static_cast<float*>(lse.data_ptr()),
+-      static_cast<const int32_t*>(kv_lens.data_ptr()),
+-      static_cast<const int32_t*>(cum_seq_lens.data_ptr()),
+-      nh * vd,
+-      nh);
++  LaunchKernel(grid, block, device.unwrap())
++      .enable_pdl(kUsePDL)(
++          fixup_zero_kv_rows_kernel<OutT, kUsePDL>,
++          static_cast<OutT*>(out.data_ptr()),
++          static_cast<float*>(lse.data_ptr()),
++          static_cast<const int32_t*>(kv_lens.data_ptr()),
++          static_cast<const int32_t*>(cum_seq_lens.data_ptr()),
++          nh * vd,
++          nh);
+ }
+ 
+ }  // namespace sglang
+diff --git a/python/sglang/kernels/ops/attention/dcp_kernels.py b/python/sglang/kernels/ops/attention/dcp_kernels.py
+index caf7bc75cd..2aefa2d15f 100644
+--- a/python/sglang/kernels/ops/attention/dcp_kernels.py
++++ b/python/sglang/kernels/ops/attention/dcp_kernels.py
+@@ -277,6 +277,10 @@ def _correct_attn_cp_out_kernel(
+     # Apply correction and store
+     output = tl.load(outputs_ptr + output_offsets)
+     output = output * factor
++    # A zero-weight rank's raw output can be NaN (e.g. a degenerate DCP shard
++    # with no owned tokens); NaN * 0.0 == NaN, so guard explicitly rather than
++    # trust the multiply.
++    output = tl.where(factor == 0.0, 0.0, output)
+     tl.store(new_output_ptr + new_output_offsets, output)
+ 
+ 
+diff --git a/python/sglang/kernels/ops/attention/dsa/transform_index.py b/python/sglang/kernels/ops/attention/dsa/transform_index.py
+index 2d7dd105e1..a965416fe8 100644
+--- a/python/sglang/kernels/ops/attention/dsa/transform_index.py
++++ b/python/sglang/kernels/ops/attention/dsa/transform_index.py
+@@ -49,6 +49,8 @@ def transform_index_page_table_decode_kernel(
+     result_ptr: torch.Tensor,
+     page_size: tl.constexpr,
+     page_table_row_stride: tl.constexpr,
++    dcp_size: tl.constexpr,
++    dcp_rank: tl.constexpr,
+ ):
+     TOPK: tl.constexpr = 2048
+     req_id = tl.program_id(0)
+@@ -60,6 +62,10 @@ def transform_index_page_table_decode_kernel(
+     loaded_topk_indices = tl.load(topk_indices_ptr + offset)
+     mask = loaded_topk_indices >= 0
+     loaded_kv_indices = tl.load(page_table_ptr + loaded_topk_indices, mask=mask)
++    if dcp_size > 1:
++        # Keep slots owned by this rank as local rows; others become -1.
++        mask = mask & (loaded_kv_indices % dcp_size == dcp_rank)
++        loaded_kv_indices = loaded_kv_indices // dcp_size
+     tl.store(result_ptr + offset, loaded_kv_indices, mask=mask)
+     tl.store(result_ptr + offset, -1, mask=~mask)
+ 
+@@ -80,6 +86,8 @@ def transform_index_page_table_prefill_kernel(
+     TOPK: tl.constexpr,
+     BLOCK_Q: tl.constexpr,
+     BLOCK_TOPK: tl.constexpr,
++    dcp_size: tl.constexpr,
++    dcp_rank: tl.constexpr,
+ ):
+     request_id = tl.program_id(0)
+     query_offsets = tl.program_id(1) * BLOCK_Q + tl.arange(0, BLOCK_Q)
+@@ -113,6 +121,10 @@ def transform_index_page_table_prefill_kernel(
+         mask=valid_topk_mask,
+         other=-1,
+     )
++    if dcp_size > 1:
++        # DCP owner filter: keep slots on this rank, map global -> local row.
++        owned_mask = valid_topk_mask & (loaded_kv_indices % dcp_size == dcp_rank)
++        loaded_kv_indices = tl.where(owned_mask, loaded_kv_indices // dcp_size, -1)
+     tl.store(
+         result_ptr
+         + token_indices[:, None] * result_stride_0
+@@ -127,6 +139,8 @@ def transform_index_page_table_decode_fast(
+     topk_indices: torch.Tensor,
+     result: Optional[torch.Tensor] = None,
+     page_size: int = 1,
++    dcp_size: int = 1,
++    dcp_rank: int = 0,
+ ) -> torch.Tensor:
+     """
+     Transform the page table according to topk indices for sparse topk attention.
+@@ -151,6 +165,8 @@ def transform_index_page_table_decode_fast(
+         result,
+         page_size,
+         page_table_row_stride=page_table.stride(0),
++        dcp_size=dcp_size,
++        dcp_rank=dcp_rank,
+     )
+     return result
+ 
+@@ -163,6 +179,8 @@ def transform_index_page_table_prefill_fast(
+     output_num_tokens: Optional[int] = None,
+     page_table_is_expanded: bool = False,
+     cu_seqlens_q: Optional[torch.Tensor] = None,
++    dcp_size: int = 1,
++    dcp_rank: int = 0,
+ ) -> torch.Tensor:
+     assert page_size == 1
+     assert topk_indices.shape[1] == 2048
+@@ -200,6 +218,8 @@ def transform_index_page_table_prefill_fast(
+         TOPK=topk_indices.shape[1],
+         BLOCK_Q=block_q,
+         BLOCK_TOPK=block_topk,
++        dcp_size=dcp_size,
++        dcp_rank=dcp_rank,
+         num_warps=4,
+     )
+     return result
+diff --git a/python/sglang/kernels/ops/attention/fixup_zero_kv.py b/python/sglang/kernels/ops/attention/fixup_zero_kv.py
+index 6f42edf014..86d6fa9bea 100644
+--- a/python/sglang/kernels/ops/attention/fixup_zero_kv.py
++++ b/python/sglang/kernels/ops/attention/fixup_zero_kv.py
+@@ -4,7 +4,12 @@ from typing import TYPE_CHECKING
+ 
+ import torch
+ 
+-from sglang.kernels.jit.utils import cache_once, load_jit, make_cpp_args
++from sglang.kernels.jit.utils import (
++    cache_once,
++    is_arch_support_pdl,
++    load_jit,
++    make_cpp_args,
++)
+ 
+ if TYPE_CHECKING:
+     from tvm_ffi.module import Module
+@@ -12,7 +17,7 @@ if TYPE_CHECKING:
+ 
+ @cache_once
+ def _jit_fixup_module(dtype: torch.dtype) -> Module:
+-    args = make_cpp_args(dtype)
++    args = make_cpp_args(dtype, is_arch_support_pdl())
+     return load_jit(
+         "fixup_zero_kv",
+         *args,
+diff --git a/python/sglang/srt/arg_groups/parallel_hook.py b/python/sglang/srt/arg_groups/parallel_hook.py
+index b066a56cba..34f0bb0d18 100644
+--- a/python/sglang/srt/arg_groups/parallel_hook.py
++++ b/python/sglang/srt/arg_groups/parallel_hook.py
+@@ -133,6 +133,20 @@ def handle_dcp_validation(server_args: Any):
+             "--decode-context-parallel-size) must be >= 1, but got "
+             f"dcp_size={cfg.dcp_size}."
+         )
++    # GLM-5.x DSA DCP backport (sgl-project/sglang#31821): warn that DCP +
++    # speculative decoding is experimental. Validated for DSA models
++    # (GLM-5.x EAGLE/nextn); the dense-MLA draft path is not implemented.
++    if (
++        cfg.dcp_size > 1
++        and get_platform().is_cuda
++        and getattr(cfg, "speculative_algorithm", None) is not None
++    ):
++        logger.warning(
++            "Decode context parallel (--dcp-size > 1) with "
++            "speculative decoding is experimental: validated for DSA "
++            "models (GLM-5.x EAGLE/nextn) on the default kernel "
++            "stack; the dense-MLA draft path is not implemented."
++        )
+     if cfg.dcp_comm_backend in ("a2a", "fi_a2a") and cfg.dcp_size <= 1:
+         raise ValueError(
+             f"--dcp-comm-backend {cfg.dcp_comm_backend} only affects the "
+diff --git a/python/sglang/srt/layers/attention/dsa_backend.py b/python/sglang/srt/layers/attention/dsa_backend.py
+index 9369ad2896..204b78fb79 100644
+--- a/python/sglang/srt/layers/attention/dsa_backend.py
++++ b/python/sglang/srt/layers/attention/dsa_backend.py
+@@ -15,6 +15,9 @@ from typing import (
+ import torch
+ 
+ from sglang.srt.configs.model_config import get_dsa_index_topk, is_deepseek_dsa
++from sglang.srt.distributed.device_communicators.pynccl_allocator import (
++    use_symmetric_memory,
++)
+ from sglang.srt.runtime_context import (
+     get_buffer,
+     get_exec,
+@@ -34,6 +37,7 @@ from sglang.kernels.ops.attention.dsa.transform_index import (
+     transform_index_page_table_decode,
+     transform_index_page_table_prefill,
+ )
++from sglang.kernels.ops.attention.fixup_zero_kv import fixup_zero_kv_rows
+ from sglang.kernels.ops.attention.utils import (
+     concat_mla_absorb_q_general,
+     mla_quantize_and_rope_for_fp8,
+@@ -89,7 +93,6 @@ from sglang.srt.utils import (
+ # concat). Enable with SGLANG_DSA_TRITON_PREFILL=1. Decode stays on TileLang.
+ _DSA_TRITON_PREFILL = get_bool_env_var("SGLANG_DSA_TRITON_PREFILL")
+ _IS_GFX95 = is_gfx95_supported()
+-
+ if is_cuda():
+     import deep_gemm
+ 
+@@ -404,6 +407,42 @@ class DeepseekSparseAttnBackend(
+         self.device_sm_major = self.device_capability[0]
+         self.kv_cache_dtype = model_runner.kv_cache_dtype
+ 
++        # DCP: latent KV interleaved across ranks (slot % dcp); indexer K
++        # cache replicated so all ranks compute identical top-k.
++        parallel = get_parallel()
++        self.dcp_enabled = parallel.dcp_enabled
++        self.dcp_size = parallel.attn_dcp_size if self.dcp_enabled else 1
++        self.dcp_rank = parallel.attn_dcp_rank if self.dcp_enabled else 0
++        if self.dcp_enabled:
++            assert (
++                self.dsa_decode_impl == "trtllm" and self.dsa_prefill_impl == "trtllm"
++            ), (
++                "DCP requires the trtllm DSA backends (the sm100 defaults); "
++                f"got decode={self.dsa_decode_impl}, "
++                f"prefill={self.dsa_prefill_impl}."
++            )
++            assert not model_runner.server_args.enable_prefill_cp, (
++                "DCP does not compose with prefill CP yet: the DCP extend "
++                "recipe assumes every rank in a DCP group holds the same "
++                "extend rows, and prefill CP splits rows across ranks."
++            )
++            assert self.hisparse_coordinator is None, "DCP does not support hisparse."
++            if self.use_fused_topk:
++                # Fused top-k v2 under DCP is measured incorrect on the
++                # current tree (gsm8k 0.000 vs 0.920 with fusion off, single
++                # commit delta); disable until the v2 transform composes with
++                # the owner filter again. Costs decode perf, tracked in the
++                # PR's F-list.
++                print_warning_once("Disabling fused DSA top-k under DCP.")
++                self.use_fused_topk = False
++            if model_runner.server_args.enable_dp_attention:
++                # Keep each DCP group inside one attention-DP shard so the
++                # replicated indexer sees identical requests group-wide.
++                assert parallel.attn_tp_size % self.dcp_size == 0, (
++                    f"dcp_size ({self.dcp_size}) must divide attn_tp_size "
++                    f"({parallel.attn_tp_size}) under dp-attention."
++                )
++
+         # `flashmla_sparse_q8` = the native FP8 SM90 sparse-prefill kernel. It always
+         # runs FP8 (requires fp8_e4m3 KV) and is SM90-only, so validate both at
+         # construction: an unsupported config must fail at launch rather than
+@@ -499,7 +538,8 @@ class DeepseekSparseAttnBackend(
+             self.workspace_buffer = get_buffer(
+                 "dsa_trtllm_workspace",
+                 lambda: torch.empty(
+-                    envs.SGLANG_FLASHINFER_WORKSPACE_SIZE.get(),
++                    envs.SGLANG_FLASHINFER_WORKSPACE_SIZE.get()
++                    * self._dcp_workspace_multiplier(model_runner),
+                     dtype=torch.uint8,
+                     device=model_runner.device,
+                 ),
+@@ -507,7 +547,7 @@ class DeepseekSparseAttnBackend(
+             self._multi_ctas_kv_counter_buffer = (
+                 make_persistent_multi_ctas_kv_counter_buffer(
+                     torch.device(self.device),
+-                    self.num_q_heads,
++                    self.num_q_heads * self.dcp_size,
+                     max_batch_size=model_runner.max_running_requests,
+                 )
+             )
+@@ -515,6 +555,18 @@ class DeepseekSparseAttnBackend(
+             self.workspace_buffer = None
+             self._multi_ctas_kv_counter_buffer = None
+ 
++    def _dcp_workspace_multiplier(self, model_runner) -> int:
++        # The trtllm LSE request under DCP adds softmax-stats workspace that
++        # scales with the dcp-widened head count.
++        if not get_parallel().dcp_enabled:
++            return 1
++        widened_heads = (
++            model_runner.model_config.num_attention_heads
++            // get_parallel().attn_tp_size
++            * get_parallel().attn_dcp_size
++        )
++        return 1 + (widened_heads + 15) // 16
++
+     def _make_aiter_dsa_decode_metadata_buffer(
+         self,
+         max_seqlen_q: int,
+@@ -724,11 +776,23 @@ class DeepseekSparseAttnBackend(
+             self.dsa_topk_backend.is_sgl_kernel()
+             or self.dsa_topk_backend.is_flashinfer()
+         ):
++            if self.dcp_enabled:
++                return self._dcp_global_slots_to_local_rows(topk_indices)
+             return topk_indices
+         raise RuntimeError(
+             f"Unsupported {self.dsa_topk_backend = } for SGLANG_DSA_FUSE_TOPK."
+         )
+ 
++    def _dcp_global_slots_to_local_rows(
++        self, page_table_1: torch.Tensor
++    ) -> torch.Tensor:
++        """Global KV slots -> this rank's local rows (unowned become -1).
++
++        Returns a new tensor: the input is shared across layers (IndexShare).
++        """
++        owned = (page_table_1 >= 0) & (page_table_1 % self.dcp_size == self.dcp_rank)
++        return torch.where(owned, page_table_1 // self.dcp_size, -1)
++
+     def get_device_int32_arange(self, length: int) -> torch.Tensor:
+         if length > len(self._arange_buf):
+             next_pow_of_2 = 1 << (length - 1).bit_length()
+@@ -1969,7 +2033,10 @@ class DeepseekSparseAttnBackend(
+             forward_batch.forward_mode
+         )
+ 
+-        if self.use_fused_topk:
++        if self.use_fused_topk and not self.dcp_enabled:
++            # Under DCP, extend stays on the unfused transform (see
++            # get_indexer_metadata): the fused v2 transform is decode-shaped
++            # and ~2x slower on large extend chunks.
+             if topk_indices is not None:
+                 topk_indices = self._pad_topk_indices(topk_indices, q_nope.shape[0])
+ 
+@@ -2002,6 +2069,8 @@ class DeepseekSparseAttnBackend(
+                         or forward_batch.forward_mode.is_draft_extend_v2()
+                     ),
+                     cu_seqlens_q=metadata.cu_seqlens_q,
++                    dcp_size=self.dcp_size,
++                    dcp_rank=self.dcp_rank,
+                 )
+ 
+         # todo hisparse: to cover more backends
+@@ -2270,6 +2339,8 @@ class DeepseekSparseAttnBackend(
+                 page_table=metadata.page_table_1,
+                 topk_indices=topk_indices,
+                 page_size=1,
++                dcp_size=self.dcp_size,
++                dcp_rank=self.dcp_rank,
+             )
+ 
+         if self.dsa_decode_impl == "flashmla_sparse":
+@@ -3210,6 +3281,8 @@ class DeepseekSparseAttnBackend(
+                     or forward_batch.forward_mode.is_draft_extend_v2()
+                 ),
+                 cu_seqlens_q=metadata.cu_seqlens_q,
++                dcp_size=self.dcp_size,
++                dcp_rank=self.dcp_rank,
+             )
+         else:
+             if topk_indices is not None:
+@@ -3218,8 +3291,20 @@ class DeepseekSparseAttnBackend(
+                 page_table=metadata.page_table_1,
+                 topk_indices=topk_indices,
+                 page_size=1,
++                dcp_size=self.dcp_size,
++                dcp_rank=self.dcp_rank,
+             )
+ 
++        if self.dcp_enabled:
++            # The trtllm-gen sparse kernel consumes valid-first index rows
++            # bounded by per-row counts, while the DCP owner filter leaves -1
++            # holes mid-row. Attention is permutation-invariant over the
++            # selected set, so compact by descending sort and pass the local
++            # valid counts as seq_lens.
++            page_table_1, _ = page_table_1.sort(dim=-1, descending=True)
++            dcp_local_counts = (page_table_1 >= 0).sum(dim=-1, dtype=torch.int32)
++            seq_lens = dcp_local_counts
++
+         q_scale = 1.0
+         k_scale = (
+             layer.k_scale_float
+@@ -3235,7 +3320,7 @@ class DeepseekSparseAttnBackend(
+             grow_multi_ctas_kv_counter_buffer_if_needed(
+                 self._multi_ctas_kv_counter_buffer,
+                 torch.device(self.device),
+-                self.num_q_heads,
++                num_heads,
+                 batch_size,
+             )
+         )
+@@ -3254,6 +3339,16 @@ class DeepseekSparseAttnBackend(
+             seq_chunks = list(torch.split(seq_lens, cp_meta.split_list, dim=0))
+             seq_lens = torch.cat([seq_chunks[i] for i in cp_meta.zigzag_index], dim=0)
+ 
++        lse_buf = None
++        if self.dcp_enabled:
++            # Pre-register the LSE buffer in the symmetric-memory pool so the
++            # kernel writes it directly there — cp_lse_ag_out_rs_mla's
++            # all-gather then needs no separate cast/copy of its own.
++            with use_symmetric_memory(get_parallel().dcp_group):
++                lse_buf = torch.empty(
++                    (batch_size, num_heads), dtype=torch.float32, device=q.device
++                )
++
+         out = flashinfer.decode.trtllm_batch_decode_with_kv_cache_mla(
+             query=q,
+             kv_cache=kv,
+@@ -3268,9 +3363,34 @@ class DeepseekSparseAttnBackend(
+             bmm1_scale=bmm1_scale,
+             backend="trtllm-gen",
+             skip_softmax_threshold_scale_factor=envs.SGLANG_SKIP_SOFTMAX_DECODE_THRESHOLD_SCALE_FACTOR.get(),
++            # Under DCP each rank attends its filtered top-k shard; the
++            # base-2 LSE (ComputeLSEFromMD) feeds the cross-rank combine.
++            return_lse=self.dcp_enabled,
++            lse=lse_buf,
+             multi_ctas_kv_counter_buffer=self._multi_ctas_kv_counter_buffer,
+         )
+ 
++        if self.dcp_enabled:
++            out, lse = out
++            out = out.view(batch_size, num_heads, -1)
++            # lse is lse_buf (flashinfer returns the caller-supplied buffer
++            # unchanged) — already fp32 and pool-registered, so this view is
++            # just a shape check, not a cast.
++            lse = lse.view(batch_size, num_heads)
++            # Rows where this rank owns none of the selected tokens must
++            # contribute exp2(-inf)=0 to the cross-rank combine (the kernel's
++            # raw output for count-0 rows is NaN, not 0). One token per row
++            # here, so cum_seq_lens is just 0..batch_size.
++            fixup_zero_kv_rows(
++                out,
++                lse,
++                dcp_local_counts,
++                self.get_device_int32_arange(batch_size + 1),
++                max_seq_len=1,
++            )
++            # q rows are tokens for both decode (bs) and the decode-ized
++            # extend; the combine wants out [T, H, D] and lse [T, H] fp32.
++            return (out, lse)
+         return out
+ 
+     def _pad_topk_indices(
+@@ -3338,6 +3458,7 @@ class DeepseekSparseAttnBackend(
+                 and sum_seq_lens
+                 <= forward_batch.get_max_chunk_capacity()  # Fits in chunk
+                 and (not is_dsa_enable_prefill_cp())  # CP not enabled
++                and (not self.dcp_enabled)  # DCP extend uses the sparse MLA path
+                 and (self.hisparse_coordinator is None)
+             )
+         else:
+@@ -3387,9 +3508,17 @@ class DeepseekSparseAttnBackend(
+     def get_indexer_metadata(
+         self, layer_id: int, forward_batch: ForwardBatch
+     ) -> DSAIndexerMetadata:
+-        force_unfused = not self.use_fused_topk or (
+-            self.hisparse_coordinator is not None
+-            and forward_batch.forward_mode.is_decode_or_idle()
++        force_unfused = (
++            not self.use_fused_topk
++            or (
++                self.hisparse_coordinator is not None
++                and forward_batch.forward_mode.is_decode_or_idle()
++            )
++            # Under DCP, fuse decode only: the v2 fused transform is
++            # decode/MTP-shaped and measured ~2x slower on 32k-row extend
++            # chunks; extend uses the unfused transform (positions), which
++            # carries the DCP owner filter itself.
++            or (self.dcp_enabled and not forward_batch.forward_mode.is_decode_or_idle())
+         )
+         return DSAIndexerMetadata(
+             attn_metadata=self.forward_metadata,
+diff --git a/python/sglang/srt/layers/dcp/__init__.py b/python/sglang/srt/layers/dcp/__init__.py
+index 54ae19195a..13a8a428c6 100644
+--- a/python/sglang/srt/layers/dcp/__init__.py
++++ b/python/sglang/srt/layers/dcp/__init__.py
+@@ -38,6 +38,7 @@ from sglang.srt.layers.dcp.comm import (
+     all_gather_kv_cache_for_mha_extend,
+     all_gather_kv_cache_for_mla_extend,
+     all_gather_q_for_mla_decode,
++    alloc_dcp_q_combine_buf,
+     cp_lse_ag_out_rs_mha,
+     cp_lse_ag_out_rs_mla,
+     dcp_a2a_lse_reduce,
+@@ -70,6 +71,7 @@ __all__ = [
+     "all_gather_kv_cache_for_mha_extend",
+     "all_gather_kv_cache_for_mla_extend",
+     "all_gather_q_for_mla_decode",
++    "alloc_dcp_q_combine_buf",
+     "cp_lse_ag_out_rs_mha",
+     "cp_lse_ag_out_rs_mla",
+     "create_triton_kv_indices_for_dcp_triton",
+diff --git a/python/sglang/srt/layers/dcp/comm.py b/python/sglang/srt/layers/dcp/comm.py
+index 915a29b7ac..5242d116e0 100644
+--- a/python/sglang/srt/layers/dcp/comm.py
++++ b/python/sglang/srt/layers/dcp/comm.py
+@@ -247,17 +247,43 @@ def all_gather_kv_cache_for_mha_extend(
+     return kv_a.contiguous(), k_pe.contiguous()
+ 
+ 
++def alloc_dcp_q_combine_buf(
++    q_nope: torch.Tensor,
++    num_heads: int,
++    d_pe: int,
++    d_nope: int,
++) -> torch.Tensor:
++    """Pre-allocate the ``[H, B, d_pe + d_nope]`` buffer an upcoming
++    ``all_gather_q_for_mla_decode`` will gather, from the symmetric-memory
++    pool. Callers write the q_nope bmm's output directly into the returned
++    buffer's ``[..., d_pe:]`` slice via ``out=``, so only q_pe still needs
++    copying in later — no separate concat of the two.
++    """
++    group = get_parallel().dcp_group
++    with use_symmetric_memory(group):
++        return q_nope.new_empty((num_heads, q_nope.shape[0], d_pe + d_nope))
++
++
+ def all_gather_q_for_mla_decode(
+     q_nope_out: torch.Tensor,
+     q_pe: torch.Tensor,
++    combined_buf: Optional[torch.Tensor] = None,
+ ):
++    # q_nope_out arrives as [H, B, L] (its bmm's native layout; callers skip
++    # transposing it to [B, H, L] and back just to undo that here). q_pe is
++    # [B, H, L] and needs the transpose.
+     group = get_parallel().dcp_group
+-    with use_symmetric_memory(group):
+-        # transpose q_pe and q_nope_out from [B, H, L] to [H, B, L]
+-        combined = torch.cat([q_pe.transpose(0, 1), q_nope_out.transpose(0, 1)], dim=-1)
+-    gathered = group.all_gather(combined, dim=0)
+     d_pe = q_pe.size(-1)
+     d_nope = q_nope_out.size(-1)
++    if combined_buf is not None:
++        # q_nope_out is already this buffer's [..., d_pe:] slice (written by
++        # the caller's bmm out=); only q_pe needs to land in the pool.
++        combined_buf[..., :d_pe].copy_(q_pe.transpose(0, 1))
++        combined = combined_buf
++    else:
++        with use_symmetric_memory(group):
++            combined = torch.cat([q_pe.transpose(0, 1), q_nope_out], dim=-1)
++    gathered = group.all_gather(combined, dim=0)
+     q_pe, q_nope_out = gathered.split([d_pe, d_nope], dim=-1)
+     q_pe = q_pe.transpose(0, 1)
+     q_nope_out = q_nope_out.transpose(0, 1)
+diff --git a/python/sglang/srt/managers/scheduler.py b/python/sglang/srt/managers/scheduler.py
+index bccbf46ad9..1ab6fb46d2 100644
+--- a/python/sglang/srt/managers/scheduler.py
++++ b/python/sglang/srt/managers/scheduler.py
+@@ -4776,7 +4776,7 @@ class Scheduler(
+             weight_gb=self.tp_worker.model_runner.weight_load_mem_usage,
+             kv_cache_gb=self.token_to_kv_pool_allocator.get_kvcache().mem_usage,
+             startup_available_gb=self.startup_available_gpu_memory_gb,
+-            token_capacity=self.max_total_num_tokens,
++            token_capacity=self.max_total_num_tokens * self.server_args.dcp_size,
+             token_capacity_swa=self.swa_tokens_per_layer,
+             target_graph_memory_usage=self.tp_worker.graph_memory_usage,
+             draft_graph_memory_usage=draft_graph_memory_usage,
+diff --git a/python/sglang/srt/managers/scheduler_components/load_inquirer.py b/python/sglang/srt/managers/scheduler_components/load_inquirer.py
+index e470a40aef..1a5ec1f1a8 100644
+--- a/python/sglang/srt/managers/scheduler_components/load_inquirer.py
++++ b/python/sglang/srt/managers/scheduler_components/load_inquirer.py
+@@ -143,7 +143,9 @@ class SchedulerLoadInquirer:
+                     self.token_to_kv_pool_allocator.get_kvcache().mem_usage, 3
+                 ),
+                 graph_gb=round(sum(self.tp_worker.graph_memory_usage.values()), 3),
+-                token_capacity=int(self.max_total_num_tokens),
++                token_capacity=int(
++                    self.max_total_num_tokens * self.server_args.dcp_size
++                ),
+             )
+         except (AttributeError, TypeError) as e:
+             logger.debug(f"Memory metrics not available: {e}")
+diff --git a/python/sglang/srt/mem_cache/kv_cache_configurator.py b/python/sglang/srt/mem_cache/kv_cache_configurator.py
+index 98634cc8d2..e1398f7895 100644
+--- a/python/sglang/srt/mem_cache/kv_cache_configurator.py
++++ b/python/sglang/srt/mem_cache/kv_cache_configurator.py
+@@ -1318,7 +1318,10 @@ class KVCacheConfigurator:
+         PoolCls = current_platform.get_dsa_kv_pool_cls()
+         token_to_kv_pool = PoolCls(
+             max_total_num_tokens,
+-            page_size=self.pool_page_size,
++            # DSA kernels page at the base 64. A DCP draft spans the virtual
++            # loc space (loc_space_scale), but base-64 pages tile 64 * dcp
++            # allocations exactly, so the pool keeps the kernel page size.
++            page_size=get_schedule().page_size,
+             dtype=self.kv_cache_dtype,
+             kv_lora_rank=self.model_config.kv_lora_rank,
+             qk_rope_head_dim=self.model_config.qk_rope_head_dim,
+@@ -1341,7 +1344,10 @@ class KVCacheConfigurator:
+         PoolCls = current_platform.get_mla_kv_pool_cls()
+         token_to_kv_pool = PoolCls(
+             max_total_num_tokens,
+-            page_size=self.pool_page_size,
++            # DSA kernels page at the base 64. A DCP draft spans the virtual
++            # loc space (loc_space_scale), but base-64 pages tile 64 * dcp
++            # allocations exactly, so the pool keeps the kernel page size.
++            page_size=get_schedule().page_size,
+             dtype=self.kv_cache_dtype,
+             kv_lora_rank=self.model_config.kv_lora_rank,
+             qk_rope_head_dim=self.model_config.qk_rope_head_dim,
+@@ -1521,7 +1527,11 @@ class KVCacheConfigurator:
+             ]
+         token_to_kv_pool = PoolCls(
+             max_total_num_tokens,
+-            page_size=self.pool_page_size,
++            # DSA kernels page at the base 64. A DCP draft spans the virtual
++            # loc space (loc_space_scale), but base-64 pages tile 64 * dcp
++            # allocations exactly, so the pool keeps the kernel page size.
++            # (GLM-5.x DSA DCP backport, sgl-project/sglang#31821)
++            page_size=get_schedule().page_size,
+             dtype=self.kv_cache_dtype,
+             kv_lora_rank=self.model_config.kv_lora_rank,
+             qk_rope_head_dim=self.model_config.qk_rope_head_dim,
+diff --git a/python/sglang/srt/mem_cache/memory_pool.py b/python/sglang/srt/mem_cache/memory_pool.py
+index f11b9856d9..17be706bfb 100644
+--- a/python/sglang/srt/mem_cache/memory_pool.py
++++ b/python/sglang/srt/mem_cache/memory_pool.py
+@@ -4438,6 +4438,12 @@ class DSATokenToKVPool(MLATokenToKVPool):
+         self.index_head_dim = index_head_dim
+         if index_buf_size is None:
+             index_buf_size = size
++            parallel = get_parallel()
++            if parallel.dcp_enabled:
++                # The indexer K cache is not sharded under DCP: every rank
++                # keeps index_k for every token (global-slot addressed) so
++                # all ranks compute identical top-k.
++                index_buf_size = size * parallel.attn_dcp_size
+         self.index_buf_size = index_buf_size
+         # num head == 1 and head dim == 128 for index_k in DSA
+         assert index_head_dim == 128
+diff --git a/python/sglang/srt/models/deepseek_common/attention_forward_methods/forward_mla.py b/python/sglang/srt/models/deepseek_common/attention_forward_methods/forward_mla.py
+index 6af4b0c2bc..2eedddf646 100644
+--- a/python/sglang/srt/models/deepseek_common/attention_forward_methods/forward_mla.py
++++ b/python/sglang/srt/models/deepseek_common/attention_forward_methods/forward_mla.py
+@@ -23,6 +23,7 @@ from sglang.srt.layers.cp.utils import is_cp_v2_active
+ from sglang.srt.layers.dcp import (
+     all_gather_kv_cache_for_mla_extend,
+     all_gather_q_for_mla_decode,
++    alloc_dcp_q_combine_buf,
+     cp_lse_ag_out_rs_mla,
+     dcp_a2a_lse_reduce,
+ )
+@@ -61,7 +62,7 @@ from sglang.srt.models.deepseek_common.utils import (
+     _is_hip,
+     _is_musa,
+ )
+-from sglang.srt.runtime_context import get_exec, get_parallel
++from sglang.srt.runtime_context import get_exec, get_parallel, get_server_args
+ from sglang.srt.state_capturer.indexer_topk import (
+     maybe_capture_indexer_topk,
+ )
+@@ -102,6 +103,14 @@ def is_dcp_mla_decode_phase(forward_batch: ForwardBatch) -> bool:
+     )
+ 
+ 
++def is_dcp_dsa_extend_phase(forward_batch: ForwardBatch, use_dsa: bool) -> bool:
++    # DSA extend rows run the decode-style DCP recipe (gather q, attend the
++    # local shard, LSE-combine); dense MLA gathers KV instead.
++    if not (get_parallel().dcp_enabled and use_dsa):
++        return False
++    return forward_batch.forward_mode.is_extend(include_draft_extend_v2=True)
++
++
+ def is_mla_dcp_lse_base_on_e(attention_backend: Optional[str]) -> bool:
+     return attention_backend in {"flashmla", "cutedsl_mla"}
+ 
+@@ -314,6 +323,13 @@ class DeepseekMLAForwardMixin:
+         q_pe = None
+         k_pe = None
+         fusion_plan: Optional[MlaBmmFusionPlan] = None
++        # Set when the plain-bf16 bmm below writes q_nope_out directly into
++        # the DCP Q-gather's combine buffer (see use_fused_dcp_q_buf); passed
++        # to all_gather_q_for_mla_decode so it can skip its torch.cat.
++        combined_q_buf: Optional[torch.Tensor] = None
++        # Set when the DSA indexer was forked onto the side stream under DCP;
++        # the main stream syncs with it after the q all-gather is issued.
++        dsa_dcp_indexer_sync_pending = False
+         if self.q_lora_rank is not None:
+             q, latent_cache = (
+                 get_attn_tp_context()
+@@ -352,24 +368,35 @@ class DeepseekMLAForwardMixin:
+             ):
+                 current_stream = torch.cuda.current_stream()
+                 self.alt_stream.wait_stream(current_stream)
+-                with torch.cuda.stream(self.alt_stream):
++
++                def _indexer_topk():
++                    if self.should_run_indexer(prev_topk_indices):
++                        return self.indexer(
++                            x=hidden_states,
++                            q_lora=q_lora,
++                            positions=positions,
++                            forward_batch=forward_batch,
++                            layer_id=self.layer_id,
++                        )
++                    # skip_topk reuses prev layer's indices; mirror into this
++                    # layer's slot so the captured buffer matches what's used.
++                    return maybe_capture_indexer_topk(self.layer_id, prev_topk_indices)
++
++                if get_parallel().dcp_enabled and self.use_dsa:
++                    # The indexer goes on the side stream so it also overlaps
++                    # the q all-gather; its sync is deferred to the dcp gather
++                    # block below.
+                     k_nope = k_nope.unsqueeze(1)
+                     q = self.q_b_proj_forward(q)
+-                if self.should_run_indexer(prev_topk_indices):
+-                    topk_indices = self.indexer(
+-                        x=hidden_states,
+-                        q_lora=q_lora,
+-                        positions=positions,
+-                        forward_batch=forward_batch,
+-                        layer_id=self.layer_id,
+-                    )
++                    with torch.cuda.stream(self.alt_stream):
++                        topk_indices = _indexer_topk()
++                    dsa_dcp_indexer_sync_pending = True
+                 else:
+-                    # skip_topk reuses prev layer's indices; mirror into this
+-                    # layer's slot so the captured buffer matches what's used.
+-                    topk_indices = maybe_capture_indexer_topk(
+-                        self.layer_id, prev_topk_indices
+-                    )
+-                current_stream.wait_stream(self.alt_stream)
++                    with torch.cuda.stream(self.alt_stream):
++                        k_nope = k_nope.unsqueeze(1)
++                        q = self.q_b_proj_forward(q)
++                    topk_indices = _indexer_topk()
++                    current_stream.wait_stream(self.alt_stream)
+             else:
+                 k_nope = k_nope.unsqueeze(1)
+                 if q_replicate_active:
+@@ -500,6 +527,35 @@ class DeepseekMLAForwardMixin:
+             # fp8 q directly into the q8kv8 backend buffer.
+             q_nope_out = None
+         else:
++            # bmm naturally produces q_nope_out as [H, B, D]; on the DCP
++            # decode/DSA-extend path (no LoRA correction in between) that's
++            # exactly the layout all_gather_q_for_mla_decode wants, so skip
++            # transposing to [B, H, D] here only to transpose back there —
++            # and, for the plain bf16 bmm, write straight into the DCP
++            # gather's combine buffer via out= so the gather doesn't need a
++            # separate torch.cat at all (see combined_q_buf below).
++            defer_q_nope_transpose = (
++                get_parallel().dcp_enabled
++                and not _SGLANG_EXPERIMENTAL_LORA_OPTI
++                and not is_kv_b_lora_active(self)
++                and (
++                    forward_batch.forward_mode.is_decode()
++                    or (
++                        self.use_dsa
++                        and forward_batch.forward_mode.is_extend(
++                            include_draft_extend_v2=True
++                        )
++                    )
++                )
++            )
++            use_fused_dcp_q_buf = (
++                defer_q_nope_transpose
++                and get_server_args().enable_symm_mem
++                and not self.use_deep_gemm_bmm
++                and not _is_hip
++                and self.w_kc.dtype != torch.float8_e4m3fn
++            )
++
+             if _SGLANG_EXPERIMENTAL_LORA_OPTI:
+                 # Fork the kv_b q-correction A-step onto the LoRA side stream to overlap the bmm.
+                 from sglang.srt.lora.trtllm_lora_temp.deepseek_mla_correction import (
+@@ -552,18 +608,28 @@ class DeepseekMLAForwardMixin:
+                         self.w_scale,
+                         torch.bfloat16,
+                     )
++            elif use_fused_dcp_q_buf:
++                combined_q_buf = alloc_dcp_q_combine_buf(
++                    q_nope,
++                    self.num_local_heads,
++                    self.qk_rope_head_dim,
++                    self.kv_lora_rank,
++                )
++                q_nope_out = combined_q_buf[..., self.qk_rope_head_dim :]
++                torch.bmm(q_nope.transpose(0, 1), self.w_kc, out=q_nope_out)
+             else:
+                 q_nope_out = torch.bmm(q_nope.transpose(0, 1), self.w_kc)
+ 
+-            q_nope_out = q_nope_out.transpose(0, 1)
+-            if _SGLANG_EXPERIMENTAL_LORA_OPTI:
+-                from sglang.srt.lora.trtllm_lora_temp.deepseek_mla_correction import (
+-                    kv_b_lora_q_apply,
+-                )
++            if not defer_q_nope_transpose:
++                q_nope_out = q_nope_out.transpose(0, 1)
++                if _SGLANG_EXPERIMENTAL_LORA_OPTI:
++                    from sglang.srt.lora.trtllm_lora_temp.deepseek_mla_correction import (
++                        kv_b_lora_q_apply,
++                    )
+ 
+-                q_nope_out = kv_b_lora_q_apply(self, q_nope, q_nope_out, _kvb_q)
+-            elif is_kv_b_lora_active(self):
+-                q_nope_out = apply_kv_b_lora_q_correction(self, q_nope, q_nope_out)
++                    q_nope_out = kv_b_lora_q_apply(self, q_nope, q_nope_out, _kvb_q)
++                elif is_kv_b_lora_active(self):
++                    q_nope_out = apply_kv_b_lora_q_correction(self, q_nope, q_nope_out)
+ 
+         fuse_rope_for_trtllm_mla = self._fuse_rope_for_trtllm_mla(forward_batch)
+         if (
+@@ -637,25 +703,47 @@ class DeepseekMLAForwardMixin:
+                     q_nope_out, q_pe = all_gather_q_for_mla_decode(
+                         q_nope_out=q_nope_out,
+                         q_pe=q_pe,
++                        combined_buf=combined_q_buf,
++                    )
++                if dsa_dcp_indexer_sync_pending:
++                    # The DSA indexer ran on the side stream, overlapped with
++                    # the q pipeline and the all-gather above; join before the
++                    # attention core consumes topk_indices.
++                    torch.cuda.current_stream().wait_stream(self.alt_stream)
++            elif forward_batch.forward_mode.is_extend(include_draft_extend_v2=True):
++                if self.use_dsa:
++                    # DSA extend mirrors the decode recipe: gather q across
++                    # the DCP group, attend the local KV shard with all
++                    # gathered heads, LSE-combine in forward_absorb_core.
++                    q_nope_out, q_pe = all_gather_q_for_mla_decode(
++                        q_nope_out=q_nope_out,
++                        q_pe=q_pe,
++                        combined_buf=combined_q_buf,
++                    )
++                elif forward_batch.forward_mode.is_extend():
++                    # Dense MLA gathers KV instead; its draft-extend path is
++                    # not implemented.
++                    all_gather_kv_cache_for_mla_extend(
++                        get_token_to_kv_pool(),
++                        self.attn_mqa,
++                        forward_batch.extend_prefix_lens_cpu,
++                        forward_batch.attn_dcp_metadata.dcp_local_prefix_kv_indices,
++                        forward_batch.attn_dcp_metadata.dcp_extend_prefix_lens_sum,
++                        forward_batch.attn_dcp_metadata.dcp_kv_buffer,
++                        self.kv_lora_rank,
++                        k_nope,
++                        k_pe,
+                     )
+-            elif forward_batch.forward_mode.is_extend():
+-                # for extend, gather kv
+-                all_gather_kv_cache_for_mla_extend(
+-                    get_token_to_kv_pool(),
+-                    self.attn_mqa,
+-                    forward_batch.extend_prefix_lens_cpu,
+-                    forward_batch.attn_dcp_metadata.dcp_local_prefix_kv_indices,
+-                    forward_batch.attn_dcp_metadata.dcp_extend_prefix_lens_sum,
+-                    forward_batch.attn_dcp_metadata.dcp_kv_buffer,
+-                    self.kv_lora_rank,
+-                    k_nope,
+-                    k_pe,
+-                )
+             else:
+                 logger.warning(
+                     f"not supported forward_mode {forward_batch.forward_mode}"
+                 )
+ 
++        if dsa_dcp_indexer_sync_pending and not forward_batch.forward_mode.is_decode():
++            # Idle/fallback modes skip the decode gather block above; still
++            # join the side-stream indexer before returning.
++            torch.cuda.current_stream().wait_stream(self.alt_stream)
++
+         return (
+             q_pe,
+             k_pe,
+@@ -684,6 +772,10 @@ class DeepseekMLAForwardMixin:
+         gate: Optional[torch.Tensor] = None,
+     ):
+         save_kv_cache = True
++        # Set only by the DCP attention branches; the combine below asserts on
++        # it so a fusion path silently skipping the LSE fails loudly.
++        # (GLM-5.x DSA DCP backport, sgl-project/sglang#31821)
++        lse = None
+ 
+         if self.current_attention_backend in FORWARD_ABSORB_CORE_ATTENTION_BACKENDS:
+             extra_args = {}
+@@ -716,8 +808,12 @@ class DeepseekMLAForwardMixin:
+                     topk_indices=topk_indices,
+                 )
+                 attn_output = fusion_plan.attn_output_buf
+-            elif is_dcp_mla_decode_phase(forward_batch):
+-                # set return_lse=True to correct attn_output
++            elif is_dcp_mla_decode_phase(forward_batch) or is_dcp_dsa_extend_phase(
++                forward_batch, self.use_dsa
++            ):
++                # set return_lse=True to correct attn_output. DSA extend takes
++                # this path too: q was head-widened in prepare and each rank
++                # runs the sparse kernels over its KV shard.
+                 attn_output, lse = self.attn_mqa_for_dcp_decode(
+                     q_nope_out,
+                     k_nope,
+@@ -765,7 +861,13 @@ class DeepseekMLAForwardMixin:
+             )
+ 
+         # correct attn_output with respect to lse from other ranks
+-        if is_dcp_mla_decode_phase(forward_batch):
++        if is_dcp_mla_decode_phase(forward_batch) or is_dcp_dsa_extend_phase(
++            forward_batch, self.use_dsa
++        ):
++            assert lse is not None, (
++                "DCP LSE combine reached without an LSE — the attention call "
++                "above must go through the attn_mqa_for_dcp_decode branch."
++            )
+             attn_output = attn_output.view(
+                 -1,
+                 self.num_local_heads * get_parallel().attn_dcp_size,
+diff --git a/python/sglang/srt/models/deepseek_v2.py b/python/sglang/srt/models/deepseek_v2.py
+index f3ed43efeb..286665708b 100644
+--- a/python/sglang/srt/models/deepseek_v2.py
++++ b/python/sglang/srt/models/deepseek_v2.py
+@@ -3249,6 +3249,11 @@ class DeepseekV2ForCausalLM(nn.Module, DeepseekV2WeightLoaderMixin):
+         kv_cache_device,
+         create_chunked_prefix_cache_kv_indices_fn,
+     ):
++        if is_deepseek_dsa(self.config):
++            # DSA extend under DCP attends over the local KV shard with the
++            # sparse kernels (gathered-q + LSE combine); the dense-MLA gather
++            # buffers built below would go unused.
++            return None
+         return prepare_decode_context_parallel_metadata(
+             seq_lens=seq_lens,
+             extend_prefix_lens=extend_prefix_lens,

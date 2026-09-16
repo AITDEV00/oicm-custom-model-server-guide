@@ -79,6 +79,14 @@ build-sglang-podman-0.5.19-cu130: # Build custom model server image for SGLang u
 	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.19-cu130-amd64 -f SGLang-podman-v0.5.19-cu130-amd64/Dockerfile SGLang-podman-v0.5.19-cu130-amd64
 	@podman tag oicm/sglang:0.5.19-cu130-amd64 localhost/oicm/sglang:0.5.19-cu130-amd64
 
+build-sglang-podman-v0.5.19-glm53-dcp: # Build GLM-5.x DSA/DCP image (v0.5.19-cu130 + only PR #31821, frozen patch)
+	@podman build --platform=linux/amd64 -t oicm/sglang:v0.5.19-cu130-glm53-dcp-f1eb59f54f-amd64 -f SGLang-podman-v0.5.19-cu130-amd64-glm53-dcp/Dockerfile SGLang-podman-v0.5.19-cu130-amd64-glm53-dcp
+	@podman tag oicm/sglang:v0.5.19-cu130-glm53-dcp-f1eb59f54f-amd64 localhost/oicm/sglang:v0.5.19-cu130-glm53-dcp-f1eb59f54f-amd64
+
+build-sglang-podman-v0.5.19-kimi-k3: # Build Kimi-K3 kv-free fix image (v0.5.19-cu130 + only PR #38982, frozen patch)
+	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.19-cu130-amd64-kimi-k3 -f SGLang-podman-v0.5.19-cu130-amd64-kimi-k3/Dockerfile SGLang-podman-v0.5.19-cu130-amd64-kimi-k3
+	@podman tag oicm/sglang:0.5.19-cu130-amd64-kimi-k3 localhost/oicm/sglang:0.5.19-cu130-amd64-kimi-k3
+
 build-sglang-podman-glm-5.3-flash: # Build custom model server image for SGLang (GLM-5.3-Flash) using Podman
 	@podman build --platform=linux/amd64 -t oicm/sglang:glm-5.3-flash-cu129-amd64 -f SGLang-podman-glm-5.3-flash-cu129-amd64/Dockerfile SGLang-podman-glm-5.3-flash-cu129-amd64
 	@podman tag oicm/sglang:glm-5.3-flash-cu129-amd64 localhost/oicm/sglang:glm-5.3-flash-cu129-amd64

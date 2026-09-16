@@ -1,0 +1,206 @@
+diff --git a/python/sglang/srt/mem_cache/common.py b/python/sglang/srt/mem_cache/common.py
+index b1497c6f5c..fd9e60457e 100644
+--- a/python/sglang/srt/mem_cache/common.py
++++ b/python/sglang/srt/mem_cache/common.py
+@@ -119,6 +119,34 @@ def free_swa_out_of_window_slots(
+         req.kv.swa_evicted_seqlen = new_swa_evicted_seqlen
+ 
+ 
++def _coalesce_touching_segments(
++    segments: list[tuple[torch.Tensor, int]],
++) -> list[tuple[torch.Tensor, int]]:
++    """Merge ascending ``(kv_indices, start_pos)`` segments of one kv row that
++    touch end-to-start into single segments; drop empty ones.
++
++    ``UnifiedRadixCache.cache_finished_req`` frees a request truncated mid
++    prefill (an abort) as two ranges, ``[page_aligned_len, effective_len)``
++    and ``[effective_len, full_len)``, which touch at ``effective_len``.
++    Handed to the allocator separately, the second one starts mid-page and
++    ``_page_disjoint`` asserts on the shared boundary page. Slices of the
++    same row that touch are exactly the slice they were cut from, so merging
++    them keeps "one call frees a shared page once" without an assert.
++    """
++    merged: list[tuple[torch.Tensor, int]] = []
++    for kv_indices, start_pos in segments:
++        num_indices = kv_indices.numel()
++        if num_indices == 0:
++            continue
++        if merged:
++            prev_indices, prev_start = merged[-1]
++            if prev_start + prev_indices.numel() == start_pos:
++                merged[-1] = (torch.cat((prev_indices, kv_indices)), prev_start)
++                continue
++        merged.append((kv_indices, start_pos))
++    return merged
++
++
+ def free_kv_row_segments(
+     allocator: BaseTokenToKVPoolAllocator,
+     segments: list[tuple[torch.Tensor, int]],
+@@ -126,10 +154,11 @@ def free_kv_row_segments(
+     swa_evicted_seqlen: int,
+ ) -> None:
+     """Free ascending disjoint ``(kv_indices, start_pos)`` segments of one
+-    request's kv row, split at the SWA eviction floor."""
++    request's kv row, split at the SWA eviction floor. Touching segments are
++    coalesced first so a boundary that is not page-aligned is freed once."""
+     swa_dead: list[torch.Tensor] = []
+     swa_alive: list[tuple[torch.Tensor, int]] = []
+-    for kv_indices, start_pos in segments:
++    for kv_indices, start_pos in _coalesce_touching_segments(segments):
+         num_indices = kv_indices.numel()
+         if num_indices == 0:
+             continue
+diff --git a/test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py b/test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py
+new file mode 100644
+index 0000000000..26d3574303
+--- /dev/null
++++ b/test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py
+@@ -0,0 +1,147 @@
++# Copyright 2023-2026 SGLang Team
++# Licensed under the Apache License, Version 2.0 (the "License");
++# you may not use this file except in compliance with the License.
++# You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++# ==============================================================================
++"""`free_kv_row_segments` must coalesce touching segments of one kv row.
++
++`UnifiedRadixCache.cache_finished_req` frees a request truncated mid prefill
++(an abort) as two ranges, ``[page_aligned_len, effective_len)`` and
++``[effective_len, full_len)``, which touch at ``effective_len``. Handed to
++``allocator.free_segments`` as two segments, ``_page_disjoint`` asserts on the
++shared boundary page ("segment at N shares a page with the one ending at N")
++and every scheduler rank dies with the request. Observed on Kimi-K3 (TP8,
++DSPARK, page_size 64) three times in production in two days, each time right
++after an abort of a request with a 120-200K-character prompt.
++"""
++
++import unittest
++
++import torch
++
++from sglang.srt.mem_cache.allocator.base import BaseTokenToKVPoolAllocator
++from sglang.srt.mem_cache.common import (
++    _coalesce_touching_segments,
++    free_kv_row_segments,
++)
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=5, suite="base-a-test-cpu")
++
++PAGE = 64
++ROW = torch.arange(10_000, 10_000 + 4096, dtype=torch.int64)
++
++
++class _RecordingAllocator:
++    page_size = PAGE
++
++    def __init__(self):
++        self.full_calls: list[list[tuple[torch.Tensor, int]]] = []
++        self.alive_calls: list[list[tuple[torch.Tensor, int]]] = []
++        self.trims: list[int] = []
++
++    def free_full(self, free_index):
++        # v0.5.19's free_kv_row_segments calls free_full for a single dead
++        # tensor (PR-branch main uses free_full_segments with tuples).
++        self.full_calls.append(free_index)
++
++    def free_full_segments(self, segments):
++        self.full_calls.append(list(segments))
++
++    def free_segments(self, segments):
++        # Mirror v0.5.19's real BaseTokenToKVPoolAllocator.free_segments: a
++        # boundary page shared by consecutive segments is emitted once by
++        # trimming the later segment's head. Record each trim so the test can
++        # assert the shared-page leak this backport avoids (on PR-branch main
++        # the same shape asserts via _page_disjoint instead).
++        ps = self.page_size
++        prev_end = None
++        trimmed = []
++        for free_index, start_pos in segments:
++            n = free_index.numel()
++            if n == 0:
++                continue
++            if prev_end is not None and start_pos // ps == (prev_end - 1) // ps:
++                boundary = (start_pos // ps + 1) * ps
++                self.trims.append(boundary - start_pos)
++                free_index = free_index[boundary - start_pos:]
++                start_pos = boundary
++            prev_end = start_pos + free_index.numel()
++            trimmed.append((free_index, start_pos))
++        self.alive_calls.append(trimmed)
++
++
++def _abort_shape(page_aligned_len: int, effective_len: int, full_len: int):
++    """The two ranges cache_finished_req emits for a truncated request."""
++    return [
++        (ROW[page_aligned_len:effective_len], page_aligned_len),
++        (ROW[effective_len:full_len], effective_len),
++    ]
++
++
++class TestCoalesceTouchingSegments(unittest.TestCase):
++    def test_touching_slices_become_the_slice_they_were_cut_from(self):
++        out = _coalesce_touching_segments(_abort_shape(1024, 1100, 1216))
++        self.assertEqual(len(out), 1)
++        indices, start = out[0]
++        self.assertEqual(start, 1024)
++        self.assertTrue(torch.equal(indices, ROW[1024:1216]))
++
++    def test_gaps_stay_apart_and_empties_are_dropped(self):
++        segs = [(ROW[0:8], 0), (ROW[8:8], 8), (ROW[20:30], 20), (ROW[30:33], 30)]
++        out = _coalesce_touching_segments(segs)
++        self.assertEqual([(s, i.numel()) for i, s in out], [(0, 8), (20, 13)])
++
++
++class TestFreeKvRowSegmentsAbortShape(unittest.TestCase):
++    def test_the_raw_abort_shape_would_leak_a_page_on_v0_5_19(self):
++        # Documents the failure this fixes. On v0.5.19 the allocator's
++        # free_segments silently TRIMS the later segment's head at a shared
++        # boundary page instead of asserting (PR-branch main asserts via
++        # _page_disjoint) -- so the raw abort shape frees once and LEAKS the
++        # boundary page's remaining slots.
++        raw = _abort_shape(1024, 1100, 1216)
++        alloc = _RecordingAllocator()
++        alloc.free_segments(raw)
++        self.assertEqual(len(alloc.trims), 1)
++        # Boundary page [1088, 1152) is shared; the later segment starts at
++        # 1100, so v0.5.19's free_segments trims its head to 1152 and the
++        # 52 slots [1100, 1152) are silently leaked.
++        self.assertEqual(alloc.trims[0], 52)
++
++    def test_mid_page_boundary_is_freed_as_one_segment(self):
++        alloc = _RecordingAllocator()
++        free_kv_row_segments(
++            alloc, _abort_shape(1024, 1100, 1216), swa_evicted_seqlen=0
++        )
++        self.assertEqual(alloc.full_calls, [])
++        self.assertEqual(len(alloc.alive_calls), 1)
++        self.assertEqual(alloc.trims, [])  # coalesced: no boundary trim
++        [(indices, start)] = alloc.alive_calls[0]
++        self.assertEqual(start, 1024)
++        self.assertTrue(torch.equal(indices, ROW[1024:1216]))
++
++    def test_swa_floor_split_still_applies_after_coalescing(self):
++        alloc = _RecordingAllocator()
++        free_kv_row_segments(
++            alloc, _abort_shape(1024, 1100, 1216), swa_evicted_seqlen=1088
++        )
++        # v0.5.19: a single dead tensor goes through free_full (a plain
++        # tensor, not a (tensor, start) tuple).
++        dead = alloc.full_calls[0]
++        [(alive, alive_start)] = alloc.alive_calls[0]
++        self.assertEqual(dead.numel(), 64)
++        self.assertEqual((alive_start, alive.numel()), (1088, 128))
++        self.assertTrue(torch.equal(torch.cat((dead, alive)), ROW[1024:1216]))
++
++
++if __name__ == "__main__":
++    unittest.main()
