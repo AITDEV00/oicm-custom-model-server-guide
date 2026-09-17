@@ -3,11 +3,28 @@
 #
 # Base release commit : 0bcd822377 (v0.5.19; annotated tag object 59f20bffdd)
 # PR #38982 snapshot  : 9bf4ab4928
-# Backport commit     : 4a57e0e164
+# Backport tip        : f664ce5fb9 (4 additional hardening picks, see below)
 #
-# Delta: ONLY sgl-project/sglang PR #38982 ([mem_cache] Coalesce touching
-#        kv-row segments before free), backported onto the v0.5.19 tag and
-#        frozen as kimi-k3-v0.5.19.patch.
+# Delta: PR #38982 (coalesce touching kv-row segments before free) PLUS the
+# HiCache/Mamba hardening set for the TP8+EP8+DCP8+HiCache-L2, no-DSPARK
+# deployment:
+#   - PR #34820 (13469c1, merged 2026-09-09 AFTER v0.5.19): store mamba
+#     prefix-cache checkpoints at the configured SSM state dtype
+#     (bf16 KDA state -> fp32 track buffer, no double-round).
+#   - PR #36770 (8370c2e + af9ff67, OPEN upstream): graceful Mamba cache
+#     exhaustion — skip caching a chunk instead of killing the scheduler
+#     when HiCache DMA pins all candidate slots. Consciously carried
+#     production hardening; drop when merged upstream.
+#   - PR #38157 (8128658, OPEN upstream): read host MemAvailable once per
+#     TP group before splitting the HiCache budget — prevents false
+#     'Not enough host memory available' at multi-hundred-GB L2 sizes.
+#
+# Already present in v0.5.19 (verified via merge-base ancestry, do NOT
+# re-pick): #33112 DCP+HiCache L2 (1a3bea7), #33639 Mamba branching
+# (3c533ac), #34808 mamba checkpoint depth under DCP (c20acee), #35084
+# DCP prefill sync removal (f44a130), #35412 decode checkpoint grid
+# (eac91ac3 — mamba_track_grid is page x LCM, correct for TP8/DCP8 512),
+# #36317 HiCache auxiliary load-back ownership (5263568).
 #
 # What it fixes: UnifiedRadixCache.cache_finished_req frees a request aborted
 # mid-prefill as two ranges that touch at effective_len. Handed to the
@@ -40,8 +57,8 @@ RUN set -ex && \
 
 # Fingerprint of the frozen patch bytes. If you regenerate the patch, update
 # this ARG -- the build fails on mismatch on purpose (reproducibility).
-# sha256: 57aa48c66615526b59b15e8f5b16756f816e0f93daa33eaec8ac4d21b23555d0
-ARG KIMI_K3_PATCH_SHA256="57aa48c66615526b59b15e8f5b16756f816e0f93daa33eaec8ac4d21b23555d0"
+# sha256: dc3a2fff019a24ed13231dc9e6de0dce99cdc43b7e0e0ef6e9352aa2e82d5d2b
+ARG KIMI_K3_PATCH_SHA256="dc3a2fff019a24ed13231dc9e6de0dce99cdc43b7e0e0ef6e9352aa2e82d5d2b"
 
 # Dry-run first so a drifted base image fails the build instead of producing a
 # silently half-patched tree.
@@ -60,10 +77,14 @@ RUN set -ex && \
 COPY import_check.py /tmp/import_check.py
 RUN python3 /tmp/import_check.py && rm /tmp/import_check.py
 
-# Run the PR's unit test (adapted to v0.5.19 allocator semantics) at build time.
+# Run the backported test set at build time: the PR #38982 unit test
+# (adapted to v0.5.19 allocator semantics) plus the #34820 SSM-dtype and
+# #36770 Mamba-allocation tests carried by this patch.
 RUN cd /sgl-workspace/sglang && \
     PYTHONPATH=/sgl-workspace/sglang/test python3 -m pytest \
       test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py \
+      test/registered/unit/layers/attention/test_mamba_track_state_dtype.py \
+      test/registered/unit/layers/test_mamba2_track_ssm_indices.py \
       -q -p no:cacheprovider
 
 # Runtime writes (SGLang/FlashInfer JIT caches, HF, torch) go to /tmp ONLY:
@@ -73,13 +94,14 @@ RUN cd /sgl-workspace/sglang && \
 # dirs are baked into the image. For standalone ad-hoc runs pass:
 #   podman run -e HOME=/tmp -e XDG_CACHE_HOME=/tmp/.cache ...
 
-LABEL org.opencontainers.image.title="SGLang v0.5.19 + Kimi-K3 kv-free fix"
-LABEL org.opencontainers.image.version="0.5.19-cu130-amd64-kimi-k3-4a57e0e164"
+LABEL org.opencontainers.image.title="SGLang v0.5.19 + Kimi-K3 kv-free + HiCache/Mamba hardening"
+LABEL org.opencontainers.image.version="0.5.19-cu130-amd64-kimi-k3-b31c387eb8"
 LABEL org.opencontainers.image.base.name="docker.io/lmsysorg/sglang:v0.5.19-cu130@sha256:d6e7288627be8b02be88e4bba38e73f6d50e2826869f753c13a4c4385ab3eda9"
 LABEL ai.sglang.base="v0.5.19 (0bcd822377)"
-LABEL ai.sglang.patch="PR-38982 (9bf4ab4928)"
-LABEL ai.sglang.patch-sha256="57aa48c66615526b59b15e8f5b16756f816e0f93daa33eaec8ac4d21b23555d0"
-LABEL ai.sglang.backport-commit="4a57e0e164"
+LABEL ai.sglang.patch="PR-38982 (9bf4ab4928) + PR-34820 (13469c1) + PR-36770 (8370c2e,af9ff67) + PR-38157 (8128658)"
+LABEL ai.sglang.patch-sha256="dc3a2fff019a24ed13231dc9e6de0dce99cdc43b7e0e0ef6e9352aa2e82d5d2b"
+LABEL ai.sglang.backport-commit="b31c387eb8"
+LABEL ai.sglang.open-upstream-prs="36770,38157"
 
 USER 10000
 

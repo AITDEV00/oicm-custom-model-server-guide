@@ -1,3 +1,777 @@
+diff --git a/python/sglang/kernels/ops/attention/fla/chunk_delta_h.py b/python/sglang/kernels/ops/attention/fla/chunk_delta_h.py
+index 2fe5e623d4..e60627f218 100644
+--- a/python/sglang/kernels/ops/attention/fla/chunk_delta_h.py
++++ b/python/sglang/kernels/ops/attention/fla/chunk_delta_h.py
+@@ -63,6 +63,9 @@ def chunk_gated_delta_rule_fwd_kernel_h_blockdim64(
+     stride_init_state,
+     cu_seqlens,
+     chunk_offsets,
++    track_state,
++    track_chunk_idx,
++    stride_track_state,
+     T,
+     H: tl.constexpr,
+     Hg: tl.constexpr,
+@@ -78,6 +81,7 @@ def chunk_gated_delta_rule_fwd_kernel_h_blockdim64(
+     IS_VARLEN: tl.constexpr,
+     NT_BUCKET: tl.constexpr,
+     USE_EXP2: tl.constexpr,
++    TRACK_STATE: tl.constexpr,
+ ):
+     i_v, i_nh = tl.program_id(0), tl.program_id(1)
+     i_n, i_h = i_nh // H, i_nh % H
+@@ -129,6 +133,15 @@ def chunk_gated_delta_rule_fwd_kernel_h_blockdim64(
+     if INPLACE_UPDATE:
+         ht = ht + i_h * V * K
+ 
++    if TRACK_STATE:
++        i_track = tl.load(track_chunk_idx + i_n).to(tl.int32)
++        p_track_base = track_state + (i_n * stride_track_state + i_h * V * K).to(
++            tl.int64
++        )
++    else:
++        i_track = -1
++        p_track_base = track_state
++
+     # load initial state
+     if USE_INITIAL_STATE and valid_state:
+         p_h0_1 = tl.make_block_ptr(h0, (V, K), (K, 1), (i_v * BV, 0), (BV, 64), (1, 0))
+@@ -171,6 +184,27 @@ def chunk_gated_delta_rule_fwd_kernel_h_blockdim64(
+             )
+             tl.store(p_h4, b_h4.to(p_h4.dtype.element_ty), boundary_check=(0, 1))
+ 
++        if TRACK_STATE and i_t == i_track:
++            p_t1 = tl.make_block_ptr(
++                p_track_base, (V, K), (K, 1), (i_v * BV, 0), (BV, 64), (1, 0)
++            )
++            tl.store(p_t1, b_h1, boundary_check=(0, 1))
++            if K > 64:
++                p_t2 = tl.make_block_ptr(
++                    p_track_base, (V, K), (K, 1), (i_v * BV, 64), (BV, 64), (1, 0)
++                )
++                tl.store(p_t2, b_h2, boundary_check=(0, 1))
++            if K > 128:
++                p_t3 = tl.make_block_ptr(
++                    p_track_base, (V, K), (K, 1), (i_v * BV, 128), (BV, 64), (1, 0)
++                )
++                tl.store(p_t3, b_h3, boundary_check=(0, 1))
++            if K > 192:
++                p_t4 = tl.make_block_ptr(
++                    p_track_base, (V, K), (K, 1), (i_v * BV, 192), (BV, 64), (1, 0)
++                )
++                tl.store(p_t4, b_h4, boundary_check=(0, 1))
++
+         p_w = tl.make_block_ptr(
+             w, (T, K), (stride_w, 1), (i_t * BT, 0), (BT, 64), (1, 0)
+         )
+@@ -325,10 +359,21 @@ def chunk_gated_delta_rule_fwd_h(
+     cu_seqlens: Optional[torch.LongTensor] = None,
+     chunk_indices: Optional[torch.LongTensor] = None,
+     use_exp2: bool = False,
++    track_state: Optional[torch.Tensor] = None,
++    track_chunk_idx: Optional[torch.Tensor] = None,
+ ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+-    assert not (
+-        use_exp2 and g is not None
+-    ), "use_exp2 covers only the per-channel gk path; scalar g stays natural-exp"
++    assert not (use_exp2 and g is not None), (
++        "use_exp2 covers only the per-channel gk path; scalar g stays natural-exp"
++    )
++    assert (track_state is None) == (track_chunk_idx is None), (
++        "track_state and track_chunk_idx must be passed together"
++    )
++    if track_state is not None:
++        # The caller rounds once to the pool dtype; a narrower buffer would
++        # silently double-round the snapshot.
++        assert track_state.dtype == torch.float32, (
++            f"track_state must be fp32, got {track_state.dtype}"
++        )
+     B, T, Hg, K, V = *k.shape, u.shape[-1]
+     H = u.shape[-2]
+     BT = CHUNK_SIZE
+@@ -368,6 +413,9 @@ def chunk_gated_delta_rule_fwd_h(
+         stride_init_state=(initial_state.stride(0) if initial_state is not None else 0),
+         cu_seqlens=cu_seqlens,
+         chunk_offsets=chunk_offsets,
++        track_state=track_state,
++        track_chunk_idx=track_chunk_idx,
++        stride_track_state=(track_state.stride(0) if track_state is not None else 0),
+         T=T,
+         H=H,
+         Hg=Hg,
+@@ -382,5 +430,6 @@ def chunk_gated_delta_rule_fwd_h(
+         IS_VARLEN=cu_seqlens is not None,
+         NT_BUCKET=(0 if NT <= 32 else (1 if NT <= 128 else 2)),
+         USE_EXP2=use_exp2,
++        TRACK_STATE=track_state is not None,
+     )
+     return h, v_new
+diff --git a/python/sglang/kernels/ops/attention/fla/kda.py b/python/sglang/kernels/ops/attention/fla/kda.py
+index c5d2defc1b..e5209e2867 100644
+--- a/python/sglang/kernels/ops/attention/fla/kda.py
++++ b/python/sglang/kernels/ops/attention/fla/kda.py
+@@ -1095,6 +1095,8 @@ def chunk_kda_fwd(
+     dt_bias: Optional[torch.Tensor] = None,
+     lower_bound: Optional[float] = None,
+     output_intermediate_states: bool = False,
++    track_state: Optional[torch.Tensor] = None,
++    track_chunk_idx: Optional[torch.Tensor] = None,
+ ):
+     chunk_size = 64
+     # Pre-compute chunk indices once and thread through all downstream kernels.
+@@ -1169,6 +1171,8 @@ def chunk_kda_fwd(
+         cu_seqlens=cu_seqlens,
+         chunk_indices=chunk_indices,
+         use_exp2=True,
++        track_state=track_state,
++        track_chunk_idx=track_chunk_idx,
+     )
+     del w, u, kg
+ 
+@@ -1210,6 +1214,9 @@ def chunk_kda(
+     dt_bias: Optional[torch.Tensor] = None,
+     lower_bound: Optional[float] = None,
+     output_intermediate_states: bool = False,
++    track_state: Optional[torch.Tensor] = None,
++    track_chunk_idx: Optional[torch.Tensor] = None,
++    beta_is_raw: bool = False,
+     **kwargs,
+ ):
+     if scale is None:
+@@ -1234,4 +1241,6 @@ def chunk_kda(
+         dt_bias=dt_bias,
+         lower_bound=lower_bound,
+         output_intermediate_states=output_intermediate_states,
++        track_state=track_state,
++        track_chunk_idx=track_chunk_idx,
+     )
+diff --git a/python/sglang/kernels/ops/attention/helion/kda_prefill.py b/python/sglang/kernels/ops/attention/helion/kda_prefill.py
+index 25e0eb3c12..d03349d918 100644
+--- a/python/sglang/kernels/ops/attention/helion/kda_prefill.py
++++ b/python/sglang/kernels/ops/attention/helion/kda_prefill.py
+@@ -1024,6 +1024,40 @@ _STATE_VARLEN_SMALL_HEAD_CONFIG = helion.Config(
+     range_unroll_factors=[0, 0],
+ )
+ 
++# Track variants of the two varlen configs. The fp32 track snapshot adds one
++# load + one store mid-body, which would shift the positional indexing /
++# eviction lists above; separate kernels keep the non-track configs untouched.
++# Tracked batches are rare (prefix-cache checkpointing only), so these trade
++# the hand-tuned positional lists for plainly correct settings.
++_STATE_VARLEN_TRACK_CONFIG = helion.Config(
++    atomic_indexing=[],
++    block_sizes=[64],
++    indexing="pointer",
++    l2_groupings=[4],
++    loop_orders=[[0, 2, 1]],
++    num_stages=2,
++    num_warps=4,
++    pid_type="flat",
++    range_flattens=[None, None],
++    range_multi_buffers=[None, False],
++    range_num_stages=[],
++    range_unroll_factors=[0, 2],
++)
++_STATE_VARLEN_SMALL_HEAD_TRACK_CONFIG = helion.Config(
++    atomic_indexing=[],
++    block_sizes=[32],
++    indexing="pointer",
++    l2_groupings=[1],
++    loop_orders=[[1, 2, 0]],
++    num_stages=3,
++    num_warps=8,
++    pid_type="flat",
++    range_flattens=[None, None],
++    range_multi_buffers=[None, True],
++    range_num_stages=[],
++    range_unroll_factors=[0, 0],
++)
++
+ 
+ @helion.kernel(
+     static_shapes=False,
+@@ -1040,6 +1074,9 @@ def _chunk_state(
+     cu_seqlens: torch.Tensor,
+     chunk_indices: torch.Tensor,
+     chunk_offsets: torch.Tensor,
++    track_state: torch.Tensor,
++    track_chunk_idx: torch.Tensor,
++    has_track: hl.constexpr,  # pyrefly: ignore[bad-function-definition]
+     is_varlen: hl.constexpr,  # pyrefly: ignore[bad-function-definition]
+ ) -> tuple[torch.Tensor, torch.Tensor]:
+     """Propagate KDA state between chunks and update the state pool in place."""
+@@ -1070,6 +1107,11 @@ def _chunk_state(
+             initial_state.stride(2),
+             initial_state.stride(3),
+             initial_state_indices.stride(0),
++            track_state.stride(0),
++            track_state.stride(1),
++            track_state.stride(2),
++            track_state.stride(3),
++            track_chunk_idx.stride(0),
+         )
+     )
+ 
+@@ -1108,6 +1150,9 @@ def _chunk_state(
+             :,
+         ].float()
+ 
++        if has_track:
++            i_track = track_chunk_idx[tile_sequence.id]
++
+         for token_tile in hl.tile(sequence_length, block_size=64):
+             global_chunk = output_offset + token_tile.id
+             h_rows[
+@@ -1115,6 +1160,17 @@ def _chunk_state(
+                 tile_v,
+                 :,
+             ] = state.to(h.dtype)
++            if has_track:
++                # Snapshot the fp32 accumulator at the tracked chunk boundary
++                # (the h store above rounds to the activation dtype; -1 marks
++                # untracked sequences and never matches a chunk id).
++                if token_tile.id == i_track:
++                    track_state[
++                        tile_sequence.id,
++                        tile_h.id,
++                        tile_v.index,
++                        :,
++                    ] = state
+             token = begin + token_tile.index
+             valid = token < end
+             row = token * H + tile_h.id
+@@ -1163,13 +1219,29 @@ _chunk_state_varlen_small_head = helion.kernel(
+     config=_STATE_VARLEN_SMALL_HEAD_CONFIG,
+     ignore_warnings=_IGNORED_WARNINGS,
+ )(_chunk_state.fn)
++_chunk_state_varlen_track = helion.kernel(
++    static_shapes=False,
++    config=_STATE_VARLEN_TRACK_CONFIG,
++    ignore_warnings=_IGNORED_WARNINGS,
++)(_chunk_state.fn)
++_chunk_state_varlen_small_head_track = helion.kernel(
++    static_shapes=False,
++    config=_STATE_VARLEN_SMALL_HEAD_TRACK_CONFIG,
++    ignore_warnings=_IGNORED_WARNINGS,
++)(_chunk_state.fn)
+ 
+ 
+-def _select_state_kernel(*, is_varlen: bool, num_heads: int) -> helion.Kernel:
++def _select_state_kernel(
++    *, is_varlen: bool, num_heads: int, has_track: bool
++) -> helion.Kernel:
+     if not is_varlen:
+         return _chunk_state
+     if num_heads <= _PREFILL_SMALL_HEAD_THRESHOLD:
++        if has_track:
++            return _chunk_state_varlen_small_head_track
+         return _chunk_state_varlen_small_head
++    if has_track:
++        return _chunk_state_varlen_track
+     return _chunk_state_varlen
+ 
+ 
+@@ -1314,6 +1386,9 @@ def chunk_kda(
+     dt_bias: torch.Tensor | None = None,
+     lower_bound: float | None = None,
+     output_intermediate_states: bool = False,
++    track_state: torch.Tensor | None = None,
++    track_chunk_idx: torch.Tensor | None = None,
++    beta_is_raw: bool = False,
+     **kwargs: object,
+ ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+     """Match the public forward contract of SGLang's Triton ``chunk_kda``."""
+@@ -1321,6 +1396,13 @@ def chunk_kda(
+         scale = k.shape[-1] ** -0.5
+     if initial_state is None or initial_state_indices is None:
+         raise ValueError("KDA prefill requires an indexed initial-state pool")
++    assert (track_state is None) == (track_chunk_idx is None), (
++        "track_state and track_chunk_idx must be passed together"
++    )
++    if track_state is not None:
++        assert track_state.dtype == torch.float32, (
++            f"track_state must be fp32, got {track_state.dtype}"
++        )
+ 
+     num_tokens = q.shape[1]
+     if g.shape[1] < num_tokens or beta.shape[1] < num_tokens:
+@@ -1346,6 +1428,8 @@ def chunk_kda(
+             dt_bias=dt_bias,
+             lower_bound=lower_bound,
+             output_intermediate_states=output_intermediate_states,
++            track_state=track_state,
++            track_chunk_idx=track_chunk_idx,
+         )
+ 
+     q = q.contiguous()
+@@ -1392,7 +1476,10 @@ def chunk_kda(
+     else:
+         metadata = torch.empty(0, device=q.device, dtype=torch.int32)
+         chunk_offsets = torch.empty(0, device=q.device, dtype=torch.long)
+-    state_kernel = _select_state_kernel(is_varlen=is_varlen, num_heads=q.size(2))
++    has_track = track_state is not None
++    state_kernel = _select_state_kernel(
++        is_varlen=is_varlen, num_heads=q.size(2), has_track=has_track
++    )
+     h, v_new = state_kernel(
+         kg,
+         w,
+@@ -1407,6 +1494,11 @@ def chunk_kda(
+             else torch.empty(0, 2, device=q.device, dtype=torch.long)
+         ),
+         chunk_offsets,
++        # Unused when has_track is False; bind in-place tensors as stand-ins so
++        # the kernel signature always sees real tensors.
++        track_state if has_track else initial_state,
++        track_chunk_idx if has_track else initial_state_indices,
++        has_track,
+         is_varlen,
+     )
+     if chunk_indices is None:
+diff --git a/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py b/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py
+index 126e48bdd2..a0cee85509 100644
+--- a/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py
++++ b/python/sglang/srt/layers/attention/hybrid_linear_attn_backend.py
+@@ -119,9 +119,14 @@ class MambaAttnBackendBase(AttentionBackend):
+         retrieve_parent_token = None
+         track_conv_indices = None
+         track_ssm_h_src = None
++        track_chunk_idx = None
+         track_ssm_h_dst = None
++        track_ssm_h_batch_src = None
+         track_ssm_final_src = None
+         track_ssm_final_dst = None
++        track_ssm_seq_idx = None
++        track_ssm_end_locs = None
++        track_ssm_recompute_dst = None
+ 
+         mamba_cache_indices = self.req_to_token_pool.get_mamba_indices(
+             forward_batch.req_pool_indices
+@@ -248,10 +253,15 @@ class MambaAttnBackendBase(AttentionBackend):
+                     )
+ 
+                     (
++                        track_chunk_idx,
+                         track_ssm_h_src,
+                         track_ssm_h_dst,
++                        track_ssm_h_batch_src,
+                         track_ssm_final_src,
+                         track_ssm_final_dst,
++                        track_ssm_seq_idx,
++                        track_ssm_end_locs,
++                        track_ssm_recompute_dst,
+                     ) = self._init_track_ssm_indices(mamba_cache_indices, forward_batch)
+         else:
+             raise ValueError(f"Invalid forward mode: {forward_batch.forward_mode=}")
+@@ -268,8 +278,13 @@ class MambaAttnBackendBase(AttentionBackend):
+             track_conv_indices=track_conv_indices,
+             track_ssm_h_src=track_ssm_h_src,
+             track_ssm_h_dst=track_ssm_h_dst,
++            track_ssm_h_batch_src=track_ssm_h_batch_src,
+             track_ssm_final_src=track_ssm_final_src,
+             track_ssm_final_dst=track_ssm_final_dst,
++            track_chunk_idx=track_chunk_idx,
++            track_ssm_seq_idx=track_ssm_seq_idx,
++            track_ssm_end_locs=track_ssm_end_locs,
++            track_ssm_recompute_dst=track_ssm_recompute_dst,
+             has_mamba_track_mask=has_mamba_track_mask,
+             replayssm_write_pos=replayssm_write_pos,
+             replayssm_force_flush=replayssm_force_flush,
+@@ -348,7 +363,9 @@ class MambaAttnBackendBase(AttentionBackend):
+     ):
+         """src/dst indices to track SSM states for prefix caching: aligned seqs
+         cache last_recurrent_state, unaligned cache intermediate `h` at the last
+-        chunk boundary."""
++        chunk boundary. Also returns ``track_ssm_h_batch_src``: the batch rows of
++        the unaligned tracked seqs, used to integer-index the fp32 snapshot
++        buffer on the KDA path so the copy stays free of GPU syncs."""
+         state_chunk_size = self.mamba_chunk_size
+         # CPU to avoid kernel launches for the masking ops
+         mamba_track_mask = forward_batch.mamba_track_mask.cpu()
+@@ -358,6 +375,11 @@ class MambaAttnBackendBase(AttentionBackend):
+         mamba_track_seqlens = forward_batch.mamba_track_seqlens.cpu()
+         prefix_lens = forward_batch.extend_prefix_lens.cpu()
+ 
++        # PR #34820 backport: move the (possibly None) tracking tensors to the
++        # device in one place, preserving None so downstream guards hold.
++        def to_device(t):
++            return None if t is None else t.to(self.device, non_blocking=True)
++
+         if isinstance(self, Mamba2AttnBackend):
+             num_h_states = extend_seq_lens // state_chunk_size
+         else:
+@@ -383,12 +405,48 @@ class MambaAttnBackendBase(AttentionBackend):
+             lens_masked[not_aligned] // state_chunk_size
+         )
+         track_ssm_h_dst = dst_masked[not_aligned]
++        # PR #34820 backport: KDA fp32-snapshot tracking. Mamba2: `h` is one
++        # chunk grid over the flattened batch, so the wanted state is in it
++        # only when query_start_loc[i] is chunk-aligned; off-grid rows are
++        # recomputed instead (seq_idx/end_locs/recompute_dst below).
++        track_ssm_seq_idx = None
++        track_ssm_end_locs = None
++        track_ssm_recompute_dst = None
++        if isinstance(self, Mamba2AttnBackend):
++            query_start_loc = torch.zeros_like(extend_seq_lens)
++            query_start_loc[1:] = torch.cumsum(extend_seq_lens[:-1], dim=0)
++            aligned_len = (
++                lens_masked[not_aligned] // state_chunk_size
++            ) * state_chunk_size
++            seq_idx_unaligned = torch.nonzero(mamba_track_mask, as_tuple=True)[0][
++                not_aligned
++            ]
++            end_locs = query_start_loc[seq_idx_unaligned] + aligned_len
++            on_grid = (end_locs % state_chunk_size) == 0
++
++            track_ssm_h_src = end_locs[on_grid] // state_chunk_size
++            track_ssm_h_dst = track_ssm_h_dst[on_grid]
++
++            track_ssm_seq_idx = seq_idx_unaligned[~on_grid]
++            track_ssm_end_locs = end_locs[~on_grid]
++            track_ssm_recompute_dst = dst_masked[not_aligned][~on_grid]
++
++        track_chunk_idx = torch.full((lens_to_track.shape[0],), -1, dtype=torch.int32)
++        tracked_seqs = mamba_track_mask.nonzero(as_tuple=True)[0][not_aligned]
++        track_chunk_idx[tracked_seqs] = (
++            lens_masked[not_aligned] // state_chunk_size
++        ).to(torch.int32)
+ 
+         return (
+-            track_ssm_h_src.to(self.device, non_blocking=True),
+-            track_ssm_h_dst.to(self.device, non_blocking=True),
+-            track_ssm_final_src.to(self.device, non_blocking=True),
+-            track_ssm_final_dst.to(self.device, non_blocking=True),
++            to_device(track_chunk_idx),
++            to_device(track_ssm_h_src),
++            to_device(track_ssm_h_dst),
++            to_device(tracked_seqs),
++            to_device(track_ssm_final_src),
++            to_device(track_ssm_final_dst),
++            to_device(track_ssm_seq_idx),
++            to_device(track_ssm_end_locs),
++            to_device(track_ssm_recompute_dst),
+         )
+ 
+     def init_forward_metadata_capture_cpu_graph(
+@@ -847,18 +905,40 @@ class MambaAttnBackendBase(AttentionBackend):
+         h: Optional[torch.Tensor],
+         ssm_states: torch.Tensor,
+         forward_metadata: ForwardMetadata,
++        track_states: Optional[torch.Tensor] = None,
++        *,
++        h_track_buf: Optional[torch.Tensor] = None,
+     ):
+         """Copy extend SSM state at the last chunk boundary to track slots (source
+-        depends on chunk alignment; see `_init_track_ssm_indices`)."""
++        depends on chunk alignment; see `_init_track_ssm_indices`).
++
++        Unaligned rows read the fp32 ``h_track_buf`` snapshot written in-kernel
++        when given (its rows follow the batch, selected by the integer index
++        ``track_ssm_h_batch_src`` — a boolean mask would nonzero() and sync the
++        stream once per layer); otherwise they fall back to the per-chunk
++        states ``h`` (already rounded to the activation dtype)."""
+         if forward_metadata.has_mamba_track_mask:
+             # Triton always returns h; FlashInfer returns it only when checkpoints
+             # were requested. Aligned-only tracking reads the final state below.
+             if forward_metadata.track_ssm_h_src.numel() > 0:
+-                assert h is not None
+-                h = h.squeeze(0)
+-                ssm_states[forward_metadata.track_ssm_h_dst] = h[
+-                    forward_metadata.track_ssm_h_src
+-                ].to(ssm_states.dtype, copy=False)
++                if h_track_buf is not None:
++                    ssm_states[forward_metadata.track_ssm_h_dst] = h_track_buf[
++                        forward_metadata.track_ssm_h_batch_src
++                    ].to(ssm_states.dtype, copy=False)
++                else:
++                    assert h is not None
++                    h = h.squeeze(0)
++                    ssm_states[forward_metadata.track_ssm_h_dst] = h[
++                        forward_metadata.track_ssm_h_src
++                    ].to(ssm_states.dtype, copy=False)
++            if (
++                forward_metadata.track_ssm_recompute_dst is not None
++                and forward_metadata.track_ssm_recompute_dst.numel() > 0
++            ):
++                assert track_states is not None
++                ssm_states[forward_metadata.track_ssm_recompute_dst] = (
++                    track_states.squeeze(0).to(ssm_states.dtype, copy=False)
++                )
+             if forward_metadata.track_ssm_final_src.numel() > 0:
+                 ssm_states[forward_metadata.track_ssm_final_dst] = ssm_states[
+                     forward_metadata.track_ssm_final_src
+diff --git a/python/sglang/srt/layers/attention/linear/kda_backend.py b/python/sglang/srt/layers/attention/linear/kda_backend.py
+index 699971f08b..e0a858a439 100644
+--- a/python/sglang/srt/layers/attention/linear/kda_backend.py
++++ b/python/sglang/srt/layers/attention/linear/kda_backend.py
+@@ -319,6 +319,14 @@ class KDAKernelDispatcher:
+             **kwargs,
+         )
+ 
++    def effective_extend_kernel(self, lower_bound: Optional[float]):
++        """The kernel ``extend`` will actually run: safe-gate models reroute
++        kernels without ``supports_safe_gate`` to Triton."""
++        kernel = self.extend_kernel
++        if lower_bound is not None and not getattr(kernel, "supports_safe_gate", True):
++            kernel = self.triton_kernel
++        return kernel
++
+     def extend(
+         self,
+         q: torch.Tensor,
+@@ -332,11 +340,7 @@ class KDAKernelDispatcher:
+         query_start_loc: torch.Tensor,
+         **kwargs,
+     ) -> tuple[torch.Tensor, torch.Tensor | None]:
+-        kernel = self.extend_kernel
+-        if kwargs.get("lower_bound") is not None and not getattr(
+-            kernel, "supports_safe_gate", True
+-        ):
+-            kernel = self.triton_kernel
++        kernel = self.effective_extend_kernel(kwargs.get("lower_bound"))
+         return kernel.extend(
+             q,
+             k,
+@@ -779,6 +783,34 @@ class KDAAttnBackend(MambaAttnBackendBase):
+         v = v.unflatten(-1, (-1, layer.head_v_dim)).unsqueeze(0)  # n (h d) -> 1 n h d
+ 
+         track_ssm = self.forward_metadata.has_mamba_track_mask
++        track_chunk_idx = self.forward_metadata.track_chunk_idx
++        h_track_buf = None
++        if (
++            track_ssm
++            and track_chunk_idx is not None
++            # Same rows as track_ssm_h_batch_src, but known without a GPU sync.
++            and self.forward_metadata.track_ssm_h_src.numel() > 0
++        ):
++            # fp32 scratch the kernel snapshots the tracked chunk-boundary
++            # states into (rows follow the batch; untracked rows stay unread).
++            # A kernel that does not declare support would leave the buffer
++            # unwritten and corrupt prefix-cache restores — fail loudly here.
++            # Check the kernel the dispatcher will actually run (safe-gate
++            # reroute included), not just the configured one.
++            extend_kernel = self.kernel_dispatcher.effective_extend_kernel(
++                layer.lower_bound
++            )
++            assert extend_kernel.supports_track_state_snapshot, (
++                f"{type(extend_kernel).__name__} cannot write the fp32 track "
++                f"snapshot required by the mamba track path; use "
++                f"--linear-attn-prefill-backend triton or "
++                f"--mamba-radix-cache-strategy no_buffer"
++            )
++            h_track_buf = torch.empty(
++                (track_chunk_idx.shape[0], *ssm_states.shape[1:]),
++                dtype=torch.float32,
++                device=ssm_states.device,
++            )
+         core_attn_out = self.kernel_dispatcher.extend(
+             q=q,
+             k=k,
+@@ -802,6 +834,8 @@ class KDAAttnBackend(MambaAttnBackendBase):
+             track_ssm_h_src=(
+                 self.forward_metadata.track_ssm_h_src if track_ssm else None
+             ),
++            track_state=h_track_buf,
++            track_chunk_idx=(track_chunk_idx if h_track_buf is not None else None),
+         )
+         if track_ssm:
+             # Snapshot the SSM state at the last track-aligned chunk boundary
+@@ -809,7 +843,11 @@ class KDAAttnBackend(MambaAttnBackendBase):
+             # ping-pong track slots (see _init_track_ssm_indices).
+             core_attn_out, h = core_attn_out
+             self._track_mamba_state_extend(
+-                forward_batch, h, ssm_states, self.forward_metadata
++                forward_batch,
++                h,
++                ssm_states,
++                self.forward_metadata,
++                h_track_buf=h_track_buf,
+             )
+ 
+         if (
+diff --git a/python/sglang/srt/layers/attention/linear/kernels/kda_flashkda.py b/python/sglang/srt/layers/attention/linear/kernels/kda_flashkda.py
+index 9872cf5473..e7a6bac27d 100644
+--- a/python/sglang/srt/layers/attention/linear/kernels/kda_flashkda.py
++++ b/python/sglang/srt/layers/attention/linear/kernels/kda_flashkda.py
+@@ -40,6 +40,8 @@ def _triton_fallback(
+     dt_bias=None,
+     lower_bound=None,
+     return_intermediate_states=False,
++    track_state=None,
++    track_chunk_idx=None,
+ ):
+     """Fall back to the Triton chunk_kda kernel (handles all preprocessing).
+ 
+@@ -65,6 +67,8 @@ def _triton_fallback(
+         dt_bias=dt_bias,
+         lower_bound=lower_bound,
+         output_intermediate_states=return_intermediate_states,
++        track_state=track_state,
++        track_chunk_idx=track_chunk_idx,
+     )
+ 
+ 
+@@ -81,6 +85,10 @@ class FlashKDAKernel(LinearAttnKernelBase):
+     Requires an SM90+ GPU with the ``flash_kda`` package.
+     """
+ 
++    # Tracked batches always take the Triton fallback, which forwards the
++    # fp32 snapshot arguments (see _triton_fallback).
++    supports_track_state_snapshot: bool = True
++
+     def decode(
+         self,
+         q: torch.Tensor,
+@@ -137,6 +145,8 @@ class FlashKDAKernel(LinearAttnKernelBase):
+                 dt_bias=dt_bias,
+                 lower_bound=lower_bound,
+                 return_intermediate_states=return_intermediate_states,
++                track_state=kwargs.get("track_state"),
++                track_chunk_idx=kwargs.get("track_chunk_idx"),
+             )
+ 
+         return (
+diff --git a/python/sglang/srt/layers/attention/linear/kernels/kda_helion.py b/python/sglang/srt/layers/attention/linear/kernels/kda_helion.py
+index 4e6bf31b74..b1ecbcf482 100644
+--- a/python/sglang/srt/layers/attention/linear/kernels/kda_helion.py
++++ b/python/sglang/srt/layers/attention/linear/kernels/kda_helion.py
+@@ -20,6 +20,7 @@ class HelionKDAKernel(LinearAttnKernelBase):
+     """
+ 
+     supports_packed_decode = True
++    supports_track_state_snapshot: bool = True
+ 
+     def __init__(
+         self,
+@@ -188,4 +189,6 @@ class HelionKDAKernel(LinearAttnKernelBase):
+             dt_bias=dt_bias,
+             lower_bound=lower_bound,
+             output_intermediate_states=return_intermediate_states,
++            track_state=kwargs.get("track_state"),
++            track_chunk_idx=kwargs.get("track_chunk_idx"),
+         )
+diff --git a/python/sglang/srt/layers/attention/linear/kernels/kda_nvidia.py b/python/sglang/srt/layers/attention/linear/kernels/kda_nvidia.py
+index 7ef05a2dcf..1171c39360 100644
+--- a/python/sglang/srt/layers/attention/linear/kernels/kda_nvidia.py
++++ b/python/sglang/srt/layers/attention/linear/kernels/kda_nvidia.py
+@@ -76,6 +76,10 @@ def _from_nvidia_kda_state_layout(
+ 
+ 
+ class NvidiaKDAKernel(LinearAttnKernelBase):
++    # Tracked batches route to the embedded Triton fallback, which forwards
++    # the fp32 snapshot arguments (see _triton_extend).
++    supports_track_state_snapshot: bool = True
++
+     def __init__(self):
+         # This kernel uses tcgen05 + TMEM, which are available on datacenter
+         # Blackwell (SM100/SM103, reported as capability major 10), but not on
+diff --git a/python/sglang/srt/layers/attention/linear/kernels/kda_ptx.py b/python/sglang/srt/layers/attention/linear/kernels/kda_ptx.py
+index 57cd2fdb3b..bcd0b707b8 100644
+--- a/python/sglang/srt/layers/attention/linear/kernels/kda_ptx.py
++++ b/python/sglang/srt/layers/attention/linear/kernels/kda_ptx.py
+@@ -9,9 +9,11 @@ serving shape: K = V = 128, chunk 64.
+ Scope: ordinary extend batches satisfying the kernel's fixed tensor contract.
+ Correctness-sensitive cases stay on Triton:
+ 
+-- track batches receive dense intermediate SSM states directly from the kernel
+-  when the cache checkpoint stride is also 64 tokens. Other interior snapshots
+-  stay on Triton; boundary-only tracking can still use the final state;
++- track batches carrying the fp32 snapshot buffer (``track_state``, the mamba
++  extra_buffer track path) stay on Triton — the kernel cannot write it.
++  Interior snapshots consumed as dense ``h`` still come from the kernel when
++  the cache checkpoint stride is also 64 tokens; boundary-only tracking uses
++  the final state either way;
+ - spec-decode extends, which must stay rollback-able.
+ 
+ Single-sequence token counts that are not a multiple of the kernel's 64-token
+@@ -49,6 +51,12 @@ _PAD_GATE = -1000.0
+ 
+ 
+ class PtxKDAKernel(LinearAttnKernelBase):
++    # Batches carrying the fp32 track snapshot buffer (track_state) route to
++    # the embedded Triton fallback, which forwards the snapshot arguments
++    # (the track_state check in extend -> _triton_extend); boundary-only
++    # tracking stays native.
++    supports_track_state_snapshot: bool = True
++
+     def __init__(self):
+         # tcgen05 + TMEM with sm_103a-only encodings: GB300 (SM103) only.
+         self.supports_prefill = torch.cuda.is_available() and (
+@@ -217,6 +225,11 @@ class PtxKDAKernel(LinearAttnKernelBase):
+             )
+         eligible = (
+             not kwargs.get("is_spec_decode")
++            # The native kernel cannot write the fp32 track snapshot buffer;
++            # a batch carrying one must take the Triton fallback, which
++            # forwards the snapshot arguments (see _triton_extend). Leaving
++            # the buffer unwritten would corrupt prefix-cache track slots.
++            and kwargs.get("track_state") is None
+             and intermediate_stride_supported
+             and shape_known
+             and supported_shape
+diff --git a/python/sglang/srt/layers/attention/linear/kernels/kda_triton.py b/python/sglang/srt/layers/attention/linear/kernels/kda_triton.py
+index 400a5303c7..18c88d2d1c 100644
+--- a/python/sglang/srt/layers/attention/linear/kernels/kda_triton.py
++++ b/python/sglang/srt/layers/attention/linear/kernels/kda_triton.py
+@@ -28,6 +28,7 @@ class TritonKDAKernel(LinearAttnKernelBase):
+     # the same fallback CPU/NPU use. Batched decode is handled via query_start_loc.
+     supports_packed_decode: bool = not is_cpu() and not is_npu() and not is_xpu()
+     supports_fused_chain_verify: bool = not is_cpu() and not is_npu()
++    supports_track_state_snapshot: bool = True
+ 
+     def packed_decode(
+         self,
+@@ -246,4 +247,6 @@ class TritonKDAKernel(LinearAttnKernelBase):
+             dt_bias=dt_bias,
+             lower_bound=lower_bound,
+             output_intermediate_states=return_intermediate_states,
++            track_state=kwargs.get("track_state"),
++            track_chunk_idx=kwargs.get("track_chunk_idx"),
+         )
+diff --git a/python/sglang/srt/layers/attention/linear/kernels/kernel_backend.py b/python/sglang/srt/layers/attention/linear/kernels/kernel_backend.py
+index 539a9fd4a1..ec5ae64635 100644
+--- a/python/sglang/srt/layers/attention/linear/kernels/kernel_backend.py
++++ b/python/sglang/srt/layers/attention/linear/kernels/kernel_backend.py
+@@ -13,6 +13,14 @@ class LinearAttnKernelBase(ABC):
+     uses_state_checkpoints: bool = False
+     supports_fused_chain_verify: bool = False
+ 
++    # True when extend() honors the fp32 track snapshot (track_state /
++    # track_chunk_idx), natively or by routing tracked batches to a kernel
++    # that does. KDAAttnBackend asserts this before allocating the snapshot
++    # buffer: a kernel that silently ignores those arguments leaves the buffer
++    # unwritten and corrupts prefix-cache restores. Kernels that reject
++    # tracked batches loudly (NotImplementedError) keep the default False.
++    supports_track_state_snapshot: bool = False
++
+     @abstractmethod
+     def decode(
+         self,
+diff --git a/python/sglang/srt/layers/attention/mamba/mamba2_metadata.py b/python/sglang/srt/layers/attention/mamba/mamba2_metadata.py
+index 5ebd6f367e..e4e9568d91 100644
+--- a/python/sglang/srt/layers/attention/mamba/mamba2_metadata.py
++++ b/python/sglang/srt/layers/attention/mamba/mamba2_metadata.py
+@@ -55,9 +55,20 @@ class ForwardMetadata:
+     track_ssm_h_dst: Optional[torch.Tensor] = None
+     track_ssm_final_src: Optional[torch.Tensor] = None
+     track_ssm_final_dst: Optional[torch.Tensor] = None
++    track_chunk_idx: Optional[torch.Tensor] = None
++    # Batch rows of the chunk-unaligned tracked seqs; indexes the fp32
++    # h_track_buf snapshot (KDA path) with plain integer indexing, so the
++    # copy into the track slots does not nonzero()-sync the stream.
++    track_ssm_h_batch_src: Optional[torch.Tensor] = None
+     state_checkpoint_cu_starts: Optional[torch.Tensor] = None
+     num_state_checkpoints: int = 0
+     state_checkpoint_every_n_tokens: int = 0
++    # PR #34820 backport: chunk-boundary tracking metadata for the KDA
++    # fp32-snapshot path (rebuilt prefill track, per-seq chunk locations,
++    # and recompute destinations when a checkpoint depth has no tree node).
++    track_ssm_seq_idx: Optional[torch.Tensor] = None
++    track_ssm_end_locs: Optional[torch.Tensor] = None
++    track_ssm_recompute_dst: Optional[torch.Tensor] = None
+ 
+     is_target_verify: bool = False
+     draft_token_num: int = 1
 diff --git a/python/sglang/srt/mem_cache/common.py b/python/sglang/srt/mem_cache/common.py
 index b1497c6f5c..fd9e60457e 100644
 --- a/python/sglang/srt/mem_cache/common.py
@@ -51,6 +825,873 @@ index b1497c6f5c..fd9e60457e 100644
          num_indices = kv_indices.numel()
          if num_indices == 0:
              continue
+diff --git a/python/sglang/srt/mem_cache/pool_host/base.py b/python/sglang/srt/mem_cache/pool_host/base.py
+index 1c258a7718..2a5d5abe36 100644
+--- a/python/sglang/srt/mem_cache/pool_host/base.py
++++ b/python/sglang/srt/mem_cache/pool_host/base.py
+@@ -9,7 +9,7 @@ from typing import Optional
+ import psutil
+ import torch
+ 
+-from sglang.srt.distributed.parallel_state import get_world_group
++from sglang.srt.distributed.parallel_state import get_tp_group, get_world_group
+ from sglang.srt.mem_cache.memory_pool import KVCache
+ from sglang.srt.mem_cache.pool_host.common import (
+     _cuda_host_unregister,
+@@ -35,7 +35,8 @@ def ranks_per_host() -> int:
+     Derived as world_size // nnodes: the launcher slices ranks uniformly
+     across nodes (resolution asserts divisibility), so no hostname collective
+     is needed — a collective here would have to be issued the same number of
+-    times on every rank, and ranks build different numbers of host pools.
++    times on every rank, and ranks on different pipeline stages build
++    different numbers of host pools.
+     """
+     if not (torch.distributed.is_available() and torch.distributed.is_initialized()):
+         return 1
+@@ -48,15 +49,52 @@ def ranks_per_host() -> int:
+     return max(world_group.world_size // get_parallel().nnodes, 1)
+ 
+ 
++def host_memory_sync_group() -> Optional[torch.distributed.ProcessGroup]:
++    """CPU group whose ranks read host memory together before any of them allocates.
++
++    The tensor-parallel group of one pipeline stage: its ranks build the same
++    host pools in the same order, so a collective issued once per pool is
++    matched on every rank. The world group gives no such guarantee (pipeline
++    stages own different layers and build different pools), so co-located
++    stages still read independently of each other. None outside a multi-rank
++    distributed run, where the local reading is used as is.
++    """
++    if not (torch.distributed.is_available() and torch.distributed.is_initialized()):
++        return None
++    try:
++        tp_group = get_tp_group()
++    except AssertionError:
++        return None
++    if tp_group.world_size <= 1:
++        return None
++    return tp_group.cpu_group
++
++
+ def host_memory_budget_bytes() -> int:
+     """Host RAM this rank may claim for a HiCache pool.
+ 
+     psutil reports the whole machine, so co-located ranks each see the same free
+     memory; without the split every rank sizes its pool against all of it and
+     the host is oversubscribed by the number of ranks it holds.
++
++    The split is only right for a reading taken before any co-located rank
++    allocates. Ranks reach a pool's sizing guard at different times; one that
++    arrives after its peers have pinned their pools sees that memory gone from
++    ``available`` while still dividing by the full rank count, so the peers
++    are charged twice and the guard fails on a host with room to spare. The
++    group-wide minimum fixes that: the collective is a barrier, so no rank
++    allocates before all of them have read, and the minimum is the latest
++    reading, which already reflects every pool the group built before this one.
+     """
+-    free = psutil.virtual_memory().available - HICACHE_HOST_MEMORY_RESERVE_BYTES
+-    return free // ranks_per_host()
++    free = psutil.virtual_memory().available
++    sync_group = host_memory_sync_group()
++    if sync_group is not None:
++        reading = torch.tensor(free, dtype=torch.int64)
++        torch.distributed.all_reduce(
++            reading, op=torch.distributed.ReduceOp.MIN, group=sync_group
++        )
++        free = int(reading.item())
++    return (free - HICACHE_HOST_MEMORY_RESERVE_BYTES) // ranks_per_host()
+ 
+ 
+ def sync_fixed_hicache_size(size: int, host_size: int) -> int:
+diff --git a/python/sglang/srt/mem_cache/unified_cache/components/mamba_component.py b/python/sglang/srt/mem_cache/unified_cache/components/mamba_component.py
+index 0e6042af1c..fa11dcd434 100644
+--- a/python/sglang/srt/mem_cache/unified_cache/components/mamba_component.py
++++ b/python/sglang/srt/mem_cache/unified_cache/components/mamba_component.py
+@@ -1,5 +1,7 @@
+ from __future__ import annotations
+ 
++import logging
++import time
+ from collections import defaultdict
+ from typing import TYPE_CHECKING, Callable, Optional, Sequence
+ 
+@@ -56,6 +58,9 @@ if TYPE_CHECKING:
+     )
+ 
+ 
++logger = logging.getLogger(__name__)
++
++
+ class MambaComponent(TreeComponent):
+     component_type = ComponentType.MAMBA
+ 
+@@ -490,15 +495,78 @@ class MambaComponent(TreeComponent):
+                 self.tree_core.component_protected_size_[ct] -= vlen
+             cd.lock_ref -= 1
+ 
+-    def _alloc_mamba_slot(self) -> torch.Tensor:
+-        """Allocate one mamba pool slot, evicting if necessary."""
++    def _try_alloc_mamba_slot(self) -> Optional[torch.Tensor]:
++        """Allocate one mamba pool slot for the radix cache, evicting if necessary.
++
++        Returns None when no slot is free and the one-shot eviction could not
++        free one either: every cached mamba state is momentarily unevictable
++        (held by a running request's lock_ref, or pinned by an in-flight
++        write-through backup / H->D load-back). Callers on the caching path
++        must degrade (skip caching this chunk) rather than crash: the radix
++        cache is an optimization and the request's own live state is untouched.
++        Logs a throttled pin census so a persistent pin leak is distinguishable
++        from a transient DMA window.
++        """
+         slot = self.cache.req_to_token_pool.mamba_allocator.alloc(1)
+         if slot is None:
+             self.cache.evict_for_alloc(EvictParams(num_tokens=0, mamba_num=1))
+             slot = self.cache.req_to_token_pool.mamba_allocator.alloc(1)
+-            assert slot is not None, "Can not alloc mamba cache"
++        if slot is None:
++            self._on_mamba_alloc_failed()
+         return slot
+ 
++    _CENSUS_THROTTLE_S = 60.0
++    _last_census_t = 0.0
++
++    def _on_mamba_alloc_failed(self) -> None:
++        """Account for a caching-path mamba slot alloc failure: bump the
++        radix-cache metric and emit a throttled WARNING census of the tree's
++        mamba-bearing device nodes by pin class. Never raises."""
++        if self.cache.metrics_collector is not None:
++            self.cache.metrics_collector.increment_aux_alloc_failed()
++        now = time.monotonic()
++        if now - self._last_census_t < self._CENSUS_THROTTLE_S:
++            return
++        self._last_census_t = now
++        try:
++            ct = self.component_type
++            total = locked = host_locked = wt_pending = lb_pending = 0
++            stack = [self.tree_core.root_node]
++            while stack:
++                node = stack.pop()
++                stack.extend(node.children.values())
++                cd = node.component_data[ct]
++                if cd.value is None:
++                    continue
++                total += 1
++                if cd.lock_ref > 0:
++                    locked += 1
++                if cd.host_lock_ref > 0:
++                    host_locked += 1
++                if node.write_through_pending_id is not None:
++                    wt_pending += 1
++                if node.load_back_pending_id is not None:
++                    lb_pending += 1
++            logger.warning(
++                "mamba slot alloc failed after eviction; skipping radix caching "
++                "for this chunk. census: device_nodes=%d lock_ref>0=%d "
++                "host_lock_ref>0=%d write_through_pending=%d load_back_pending=%d "
++                "evictable_size=%d protected_size=%d",
++                total,
++                locked,
++                host_locked,
++                wt_pending,
++                lb_pending,
++                self.tree_core.component_evictable_size_[ct],
++                self.tree_core.component_protected_size_[ct],
++            )
++        except Exception:
++            logger.warning(
++                "mamba slot alloc failed after eviction; skipping radix caching "
++                "for this chunk (census unavailable)",
++                exc_info=True,
++            )
++
+     @property
+     def int8_ckpt_pool(self):
+         return getattr(self.cache.req_to_token_pool, "mamba_ckpt_pool", None)
+@@ -571,10 +639,16 @@ class MambaComponent(TreeComponent):
+         else:
+             if cache_len is None:
+                 return 0
+-            # Donate the mamba index to the radix cache instead of copying.
++            # Donate the mamba index to the radix cache instead of copying. A
++            # failed slot alloc (every cached state transiently pinned) degrades
++            # to "cache nothing this chunk" (return 0 -> the caller's existing
++            # effective_cache_len<=0 skip path) instead of crashing: the request
++            # keeps its own live state and a later chunk retries the insert.
+             if self.int8_ckpt_pool is not None:
+                 if self.cache.enable_mamba_extra_buffer:
+-                    new_slot = self._alloc_mamba_slot()
++                    new_slot = self._try_alloc_mamba_slot()
++                    if new_slot is None:
++                        return 0
+                     src_active = (
+                         self.cache.req_to_token_pool.donate_mamba_ping_pong_slot(
+                             req, new_slot
+@@ -587,14 +661,18 @@ class MambaComponent(TreeComponent):
+                         req.kv.mamba_pool_idx.view(-1)
+                     )
+             elif self.cache.enable_mamba_extra_buffer:
+-                new_slot = self._alloc_mamba_slot()
++                new_slot = self._try_alloc_mamba_slot()
++                if new_slot is None:
++                    return 0
+                 mamba_value_donated = (
+                     self.cache.req_to_token_pool.donate_mamba_ping_pong_slot(
+                         req, new_slot
+                     )
+                 )
+             else:
+-                mamba_value_donated = self._alloc_mamba_slot()
++                mamba_value_donated = self._try_alloc_mamba_slot()
++                if mamba_value_donated is None:
++                    return 0
+                 # mamba_pool is a pure PHYSICAL store; translate both slot ids
+                 # virtual->physical (identity for the non-unified memory pool) first.
+                 translate = self.cache.req_to_token_pool.translate_mamba_indices
+diff --git a/python/sglang/srt/observability/metrics_collector.py b/python/sglang/srt/observability/metrics_collector.py
+index 6daebdfec0..0b2c4c43db 100644
+--- a/python/sglang/srt/observability/metrics_collector.py
++++ b/python/sglang/srt/observability/metrics_collector.py
+@@ -2153,6 +2153,16 @@ class RadixCacheMetricsCollector(_StatLoggerDIMixin):
+             labelnames=list(labels.keys()) + ["pool"],
+         )
+ 
++        self.aux_alloc_failed_total = Counter(
++            name="sglang:radix_cache_aux_alloc_failed_total",
++            documentation="Radix-cache inserts skipped because an auxiliary "
++            "device pool (e.g. the mamba state pool) could not allocate a slot "
++            "even after eviction: every cached state was held by a running "
++            "request or an in-flight hicache transfer. The request keeps "
++            "serving; only that chunk goes uncached.",
++            labelnames=labels.keys(),
++        )
++
+         self.hicache_dropped_tokens = Counter(
+             name="sglang:hicache_dropped_tokens_total",
+             documentation="The number of device KV tokens destroyed without a "
+@@ -2164,6 +2174,9 @@ class RadixCacheMetricsCollector(_StatLoggerDIMixin):
+     def increment_eviction_num_tokens(self, num_tokens: int) -> None:
+         self.eviction_num_tokens.labels(**self.labels).inc(num_tokens)
+ 
++    def increment_aux_alloc_failed(self) -> None:
++        self.aux_alloc_failed_total.labels(**self.labels).inc()
++
+     def increment_load_back_num_tokens(self, num_tokens: int, pool: str) -> None:
+         self.load_back_num_tokens.labels(**self.labels, pool=pool).inc(num_tokens)
+ 
+diff --git a/test/registered/kernel/ops/attention/test_kda_track_state.py b/test/registered/kernel/ops/attention/test_kda_track_state.py
+new file mode 100644
+index 0000000000..827bbec67f
+--- /dev/null
++++ b/test/registered/kernel/ops/attention/test_kda_track_state.py
+@@ -0,0 +1,183 @@
++import unittest
++
++import torch
++
++from sglang.kernels.ops.attention.fla.kda import chunk_kda
++from sglang.test.ci.ci_register import register_cuda_ci
++from sglang.test.test_utils import CustomTestCase
++
++register_cuda_ci(est_time=180, stage="base-b-kernel-unit", runner_config="4-gpu-b200")
++
++CHUNK_SIZE = 64
++
++_BACKENDS = {"triton": chunk_kda}
++HELION_AVAILABLE = True
++try:
++    import helion  # noqa: F401
++except ModuleNotFoundError as error:
++    # A broken install (transitive import failure) must stay loud; only the
++    # absent package downgrades the run to triton-only.
++    if error.name != "helion":
++        raise
++    HELION_AVAILABLE = False
++if HELION_AVAILABLE:
++    from sglang.kernels.ops.attention.helion.kda_prefill import (
++        chunk_kda as helion_chunk_kda,
++    )
++
++    _BACKENDS["helion"] = helion_chunk_kda
++
++
++def _make_varlen_inputs(seed, lens, num_heads=2, head_dim=128):
++    """Packed varlen KDA inputs: [1, sum(lens), H, D] plus a zero fp32 state pool."""
++    generator = torch.Generator(device="cuda").manual_seed(seed)
++    total = sum(lens)
++
++    def randn(*shape, dtype=torch.bfloat16):
++        return torch.randn(*shape, generator=generator, device="cuda", dtype=dtype)
++
++    q = randn(1, total, num_heads, head_dim)
++    k = randn(1, total, num_heads, head_dim)
++    v = (0.1 * randn(1, total, num_heads, head_dim, dtype=torch.float32)).to(
++        torch.bfloat16
++    )
++    gate = randn(1, total, num_heads, head_dim)
++    beta = torch.sigmoid(randn(1, total, num_heads, dtype=torch.float32)).to(
++        torch.bfloat16
++    )
++    a_log = randn(num_heads, dtype=torch.float32)
++    dt_bias = randn(num_heads * head_dim, dtype=torch.float32)
++    state = torch.zeros(
++        len(lens), num_heads, head_dim, head_dim, device="cuda", dtype=torch.float32
++    )
++    cu_seqlens = torch.tensor(
++        [0, *torch.tensor(lens).cumsum(0).tolist()], dtype=torch.int32, device="cuda"
++    )
++    return q, k, v, gate, beta, a_log, dt_bias, state, cu_seqlens
++
++
++def _run_chunk_kda(
++    chunk_kda_fn, q, k, v, gate, beta, a_log, dt_bias, state, cu_seqlens, **kwargs
++):
++    return chunk_kda_fn(
++        # chunk_kda writes in place (the attention output lands in v, the gate
++        # cumsum in g); hand every run fresh copies so runs stay independent.
++        q=q.clone(),
++        k=k.clone(),
++        v=v.clone(),
++        g=gate.clone(),
++        beta=beta.clone(),
++        scale=q.shape[-1] ** -0.5,
++        initial_state=state,
++        initial_state_indices=torch.arange(
++            state.shape[0], device="cuda", dtype=torch.int32
++        ),
++        use_qk_l2norm_in_kernel=True,
++        cu_seqlens=cu_seqlens,
++        A_log=a_log,
++        dt_bias=dt_bias,
++        lower_bound=-5.0,
++        **kwargs,
++    )
++
++
++class TestKdaTrackState(CustomTestCase):
++    def test_helion_backend_ran(self):
++        """Visibility hook: without helion installed the snapshot check above
++        runs triton-only and the Helion track configs go untested — surface
++        that as an explicit skip instead of a silent pass."""
++        if not HELION_AVAILABLE:
++            self.skipTest("helion is not installed; triton backend only")
++
++    @torch.inference_mode()
++    def test_track_state_snapshots_fp32_accumulator(self):
++        """Bug regression: the mamba radix track path snapshots the SSM state at
++        the last chunk boundary of unaligned sequences into the fp32 state pool.
++        It used to read the per-chunk states `h` (activation dtype, bf16), so a
++        prefix-cache hit restored a bf16-rounded state while a cache miss kept
++        fp32. `track_state` must carry the in-kernel fp32 accumulator: identical
++        to the fp32 final state of a run truncated at the boundary, and strictly
++        more precise than the bf16 `h` row for the same boundary.
++        """
++        if not torch.cuda.is_available():
++            self.skipTest("requires CUDA")
++        for backend, chunk_kda_fn in _BACKENDS.items():
++            # num_heads=2 exercises the Helion small-head track config; 16
++            # crosses _PREFILL_SMALL_HEAD_THRESHOLD (12) to exercise the
++            # large-head varlen track config that real models take.
++            for num_heads in (2, 16):
++                with self.subTest(backend=backend, num_heads=num_heads):
++                    self._check_track_state(chunk_kda_fn, num_heads)
++
++    def _check_track_state(self, chunk_kda_fn, num_heads):
++        # seq0: 100 tokens, unaligned -> snapshot at the 64-token boundary
++        # (start of chunk 1). seq1: 64 tokens, aligned -> not tracked.
++        lens = [100, 64]
++        q, k, v, gate, beta, a_log, dt_bias, state, cu_seqlens = _make_varlen_inputs(
++            0, lens, num_heads=num_heads
++        )
++        num_heads, head_dim = q.shape[2], q.shape[3]
++
++        track_state = torch.full(
++            (len(lens), num_heads, head_dim, head_dim),
++            float("nan"),
++            device="cuda",
++            dtype=torch.float32,
++        )
++        track_chunk_idx = torch.tensor([1, -1], dtype=torch.int32, device="cuda")
++        _, h = _run_chunk_kda(
++            chunk_kda_fn,
++            q,
++            k,
++            v,
++            gate,
++            beta,
++            a_log,
++            dt_bias,
++            state,
++            cu_seqlens,
++            output_intermediate_states=True,
++            track_state=track_state,
++            track_chunk_idx=track_chunk_idx,
++        )
++
++        # The untracked row must stay untouched; the tracked row must be finite.
++        self.assertTrue(torch.all(torch.isnan(track_state[1])))
++        self.assertFalse(torch.any(torch.isnan(track_state[0])))
++
++        # Reference: truncate seq0 at the boundary; the pool's fp32 row then
++        # receives the in-place final state for the same prefix — the
++        # established fp32 path the snapshot must agree with.
++        ref_state = torch.zeros(
++            1, num_heads, head_dim, head_dim, device="cuda", dtype=torch.float32
++        )
++        ref_cu_seqlens = torch.tensor([0, CHUNK_SIZE], dtype=torch.int32, device="cuda")
++        _run_chunk_kda(
++            chunk_kda_fn,
++            q[:, :CHUNK_SIZE],
++            k[:, :CHUNK_SIZE],
++            v[:, :CHUNK_SIZE],
++            gate[:, :CHUNK_SIZE],
++            beta[:, :CHUNK_SIZE],
++            a_log,
++            dt_bias,
++            ref_state,
++            ref_cu_seqlens,
++        )
++        torch.testing.assert_close(track_state[0], ref_state[0], rtol=1e-5, atol=1e-5)
++
++        # The guard: h packs one row per (seq, chunk); row 1 is seq0's state at
++        # the boundary, rounded to bf16. If the snapshot were re-routed through
++        # h, it could not match the fp32 reference above.
++        self.assertTrue(
++            torch.equal(h[0, 1].float(), track_state[0].to(torch.bfloat16).float()),
++            "h row should be exactly the bf16 rounding of the fp32 snapshot",
++        )
++        self.assertFalse(
++            torch.equal(track_state[0], track_state[0].to(torch.bfloat16).float()),
++            "test inputs must make bf16 rounding lossy",
++        )
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/test/registered/unit/layers/attention/linear/kernels/test_kda_ptx.py b/test/registered/unit/layers/attention/linear/kernels/test_kda_ptx.py
+new file mode 100644
+index 0000000000..231db3cd27
+--- /dev/null
++++ b/test/registered/unit/layers/attention/linear/kernels/test_kda_ptx.py
+@@ -0,0 +1,131 @@
++"""Unit tests for the PTX KDA prefill routing wrapper."""
++
++import unittest
++from unittest.mock import Mock, patch
++
++import torch
++
++from sglang.srt.layers.attention.linear.kernels.kda_ptx import PtxKDAKernel
++from sglang.test.ci.ci_register import register_cpu_ci
++from sglang.test.test_utils import CustomTestCase
++
++register_cpu_ci(est_time=5, suite="base-a-test-cpu")
++
++
++class _RejectTriton:
++    def extend(self, *args, **kwargs):
++        raise AssertionError("native-eligible batch unexpectedly fell back to Triton")
++
++
++class TestPtxKDATrackRouting(CustomTestCase):
++    """Regression: a batch carrying the fp32 track snapshot buffer must not
++    take the native PTX path — the kernel cannot write the buffer, and the
++    backend copies it into the prefix-cache track slots unconditionally, so an
++    unwritten buffer silently corrupts later cache restores.
++    """
++
++    def _make_kernel(self):
++        kernel = PtxKDAKernel()
++        kernel._ensure_loaded = lambda: None
++        kernel._fwd = Mock(side_effect=AssertionError("native path must not run"))
++        return kernel
++
++    @staticmethod
++    def _inputs(seq_lens=(64, 100)):
++        total = sum(seq_lens)
++        H, D = 2, 128
++
++        def vals(offset):
++            return torch.full((1, total, H, D), offset, dtype=torch.bfloat16)
++
++        return {
++            "q": vals(0.1),
++            "k": vals(0.2),
++            "v": vals(0.3),
++            "g": vals(0.4),
++            "beta": torch.zeros(1, total, H, dtype=torch.bfloat16),
++            "ssm_states": torch.zeros(8, H, D, D, dtype=torch.float32),
++            "cache_indices": torch.tensor([1, 3], dtype=torch.int32),
++            "query_start_loc": torch.tensor(
++                [0] + list(torch.tensor(seq_lens).cumsum(0).tolist()),
++                dtype=torch.int32,
++            ),
++            "A_log": torch.zeros(H, dtype=torch.float32),
++            "dt_bias": torch.zeros(H * D, dtype=torch.float32),
++            "extend_seq_lens_cpu": list(seq_lens),
++        }
++
++    def test_batch_with_track_state_routes_to_triton(self):
++        kernel = self._make_kernel()
++        kernel._triton.extend = Mock(return_value="triton-out")
++        x = self._inputs()
++        track_state = torch.zeros(2, 2, 128, 128, dtype=torch.float32)
++        track_chunk_idx = torch.tensor([1, -1], dtype=torch.int32)
++
++        with patch(
++            "sglang.srt.layers.attention.linear.kernels.kda_ptx.mamba_cache_chunk_size",
++            return_value=64,
++        ):
++            out = kernel.extend(
++                x["q"],
++                x["k"],
++                x["v"],
++                x["g"],
++                x["beta"],
++                ssm_states=x["ssm_states"],
++                cache_indices=x["cache_indices"],
++                query_start_loc=x["query_start_loc"],
++                A_log=x["A_log"],
++                dt_bias=x["dt_bias"],
++                return_intermediate_states=True,
++                track_ssm_h_src=torch.tensor([1], dtype=torch.long),
++                track_state=track_state,
++                track_chunk_idx=track_chunk_idx,
++                extend_seq_lens_cpu=x["extend_seq_lens_cpu"],
++            )
++
++        self.assertEqual(out, "triton-out")
++        kernel._fwd.assert_not_called()
++        kernel._triton.extend.assert_called_once()
++        forwarded = kernel._triton.extend.call_args.kwargs
++        self.assertIs(forwarded["track_state"], track_state)
++        self.assertIs(forwarded["track_chunk_idx"], track_chunk_idx)
++
++    def test_batch_without_track_state_stays_native(self):
++        kernel = self._make_kernel()
++        kernel._triton = _RejectTriton()
++        h = torch.zeros(3, 2, 128, 128, dtype=torch.float32)
++
++        def fake_fwd(*args, **kwargs):
++            return [
++                args[2].clone(),  # out == v
++                kwargs["initial_state"].clone(),  # final_state
++                *([None] * 8),
++                h,  # result[10]
++            ]
++
++        kernel._fwd = fake_fwd
++        x = self._inputs()
++
++        out, h_out = kernel.extend(
++            x["q"],
++            x["k"],
++            x["v"],
++            x["g"],
++            x["beta"],
++            ssm_states=x["ssm_states"],
++            cache_indices=x["cache_indices"],
++            query_start_loc=x["query_start_loc"],
++            A_log=x["A_log"],
++            dt_bias=x["dt_bias"],
++            return_intermediate_states=True,
++            track_ssm_h_src=torch.empty(0, dtype=torch.long),
++            extend_seq_lens_cpu=x["extend_seq_lens_cpu"],
++        )
++
++        self.assertEqual(tuple(out.shape), (1, 164, 2, 128))
++        self.assertIs(h_out, h)
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/test/registered/unit/layers/attention/test_kda_helion_dispatcher.py b/test/registered/unit/layers/attention/test_kda_helion_dispatcher.py
+index dc4cd87e6e..46fa7f45f2 100644
+--- a/test/registered/unit/layers/attention/test_kda_helion_dispatcher.py
++++ b/test/registered/unit/layers/attention/test_kda_helion_dispatcher.py
+@@ -195,5 +195,56 @@ class TestHelionKDADispatcher(unittest.TestCase):
+         self.assertEqual(args.linear_attn_backend, "helion")
+ 
+ 
++class TestKDATrackStateSnapshotDeclaration(unittest.TestCase):
++    """Bookkeeping: every KDA prefill kernel must declare whether extend()
++    honors the fp32 track snapshot (``supports_track_state_snapshot``).
++
++    KDAAttnBackend allocates the snapshot buffer whenever a tracked batch has
++    chunk-unaligned sequences and asserts the flag before use. A kernel that
++    serves extend() without the flag must reject tracked batches loudly
++    (NotImplementedError); a missing declaration used to mean the buffer was
++    silently left unwritten and prefix-cache restores read garbage (the
++    FlashKDA fallback once dropped the track arguments exactly this way).
++    """
++
++    def test_every_kda_prefill_kernel_declares_the_contract(self):
++        from sglang.srt.layers.attention.linear.kernels.kda_cutedsl import (
++            CuteDSLKDAKernel,
++        )
++        from sglang.srt.layers.attention.linear.kernels.kda_flashinfer import (
++            FlashInferKDAKernel,
++        )
++        from sglang.srt.layers.attention.linear.kernels.kda_flashkda import (
++            FlashKDAKernel,
++        )
++        from sglang.srt.layers.attention.linear.kernels.kda_nvidia import (
++            NvidiaKDAKernel,
++        )
++        from sglang.srt.layers.attention.linear.kernels.kda_ptx import (
++            PtxKDAKernel,
++        )
++
++        # Native support or fallback that forwards the snapshot arguments.
++        for cls in (
++            TritonKDAKernel,
++            HelionKDAKernel,
++            NvidiaKDAKernel,
++            PtxKDAKernel,
++            FlashKDAKernel,
++        ):
++            self.assertTrue(
++                cls.supports_track_state_snapshot,
++                f"{cls.__name__} must declare supports_track_state_snapshot "
++                f"(native support or a fallback that forwards track_state)",
++            )
++        # Reject tracked batches loudly instead (extend() raises).
++        for cls in (CuteDSLKDAKernel, FlashInferKDAKernel):
++            self.assertFalse(
++                cls.supports_track_state_snapshot,
++                f"{cls.__name__} rejects tracked batches; it must not claim "
++                f"snapshot support it does not have",
++            )
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/test/registered/unit/layers/attention/test_mamba_track_state_dtype.py b/test/registered/unit/layers/attention/test_mamba_track_state_dtype.py
+new file mode 100644
+index 0000000000..879fe1df1b
+--- /dev/null
++++ b/test/registered/unit/layers/attention/test_mamba_track_state_dtype.py
+@@ -0,0 +1,94 @@
++import unittest
++
++import torch
++
++from sglang.srt.layers.attention.hybrid_linear_attn_backend import (
++    MambaAttnBackendBase,
++)
++from sglang.srt.layers.attention.mamba.mamba2_metadata import ForwardMetadata
++from sglang.test.ci.ci_register import register_cpu_ci
++from sglang.test.test_utils import CustomTestCase
++
++register_cpu_ci(est_time=5, suite="base-a-test-cpu")
++
++# Above the fp16 midpoint 1 + 2^-11 (single-rounds up to 1 + 2^-10) but below
++# the bf16 midpoint 1 + 2^-8 (rounds to 1.0, which then stays 1.0 in fp16):
++# any fp32 -> bf16 -> fp16 double rounding loses the increment. The 2^-23 tail
++# is the last fp32 mantissa bit at 1.x, so the probe is fp32-exact (a 2^-24
++# tail would round back to the midpoint itself).
++DOUBLE_ROUND_PROBE = 1.0 + 2.0**-11 + 2.0**-23
++
++
++class TestTrackMambaStateDtype(CustomTestCase):
++    """The fp32 track snapshot is cast to the pool dtype exactly once.
++
++    ``_track_mamba_state_extend`` reads the in-kernel fp32 snapshot
++    (``h_track_buf``) and casts it to ``ssm_states.dtype`` in a single ``.to``.
++    This must hold for every ``--mamba-ssm-dtype``: fp32 keeps full precision,
++    bf16 matches the (already correct) legacy path, and fp16 must not inherit
++    the old double rounding through the bf16 per-chunk states ``h``.
++    """
++
++    @staticmethod
++    def _run_track_copy(pool_dtype, h_track_buf, dst_slots, batch_rows):
++        metadata = ForwardMetadata(
++            has_mamba_track_mask=True,
++            # Only numel() gates the copy on this path; the h-row values
++            # themselves are unused when h_track_buf is given.
++            track_ssm_h_src=torch.zeros(len(dst_slots), dtype=torch.long),
++            track_ssm_h_dst=torch.tensor(dst_slots),
++            track_ssm_h_batch_src=torch.tensor(batch_rows),
++            track_ssm_final_src=torch.empty(0, dtype=torch.long),
++            track_ssm_final_dst=torch.empty(0, dtype=torch.long),
++            # Required by the dataclass; unused on this path.
++            query_start_loc=torch.zeros(1, dtype=torch.int32),
++            mamba_cache_indices=torch.zeros(1, dtype=torch.long),
++        )
++        ssm_states = torch.zeros(8, *h_track_buf.shape[1:], dtype=pool_dtype)
++        # The method touches no `self` state; call it unbound so this stays a
++        # pure bookkeeping test.
++        MambaAttnBackendBase._track_mamba_state_extend(
++            None, None, None, ssm_states, metadata, h_track_buf=h_track_buf
++        )
++        return ssm_states
++
++    def test_snapshot_cast_once_to_pool_dtype(self):
++        torch.manual_seed(0)
++        h_track_buf = torch.randn(3, 2, 4, 4, dtype=torch.float32)
++        h_track_buf[0, 0, 0, 0] = DOUBLE_ROUND_PROBE
++        for pool_dtype in (torch.float32, torch.bfloat16, torch.float16):
++            with self.subTest(pool_dtype=pool_dtype):
++                ssm_states = self._run_track_copy(
++                    pool_dtype, h_track_buf, dst_slots=[5, 2], batch_rows=[0, 2]
++                )
++                # Single rounding of the fp32 snapshot, in batch-row order.
++                self.assertTrue(
++                    torch.equal(ssm_states[5], h_track_buf[0].to(pool_dtype))
++                )
++                self.assertTrue(
++                    torch.equal(ssm_states[2], h_track_buf[2].to(pool_dtype))
++                )
++                untouched = torch.ones(8, dtype=torch.bool)
++                untouched[[5, 2]] = False
++                self.assertTrue(torch.all(ssm_states[untouched] == 0))
++
++    def test_fp16_pool_is_not_double_rounded_through_bf16(self):
++        h_track_buf = torch.full((1, 1, 1, 1), DOUBLE_ROUND_PROBE)
++        ssm_states = self._run_track_copy(
++            torch.float16, h_track_buf, dst_slots=[3], batch_rows=[0]
++        )
++        # fp32 -> fp16 rounds the probe UP to 1 + 2^-10; the legacy path
++        # (fp32 -> bf16 h -> fp16) collapsed it to exactly 1.0.
++        self.assertEqual(ssm_states[3, 0, 0, 0].item(), 1.0 + 2.0**-10)
++
++    def test_no_unaligned_rows_leaves_pool_untouched(self):
++        # Aligned-only tracking: the h branch is gated off entirely.
++        h_track_buf = torch.randn(2, 1, 1, 1, dtype=torch.float32)
++        ssm_states = self._run_track_copy(
++            torch.float16, h_track_buf, dst_slots=[], batch_rows=[]
++        )
++        self.assertTrue(torch.all(ssm_states == 0))
++
++
++if __name__ == "__main__":
++    unittest.main()
+diff --git a/test/registered/unit/layers/test_mamba2_track_ssm_indices.py b/test/registered/unit/layers/test_mamba2_track_ssm_indices.py
+new file mode 100644
+index 0000000000..016ec28d70
+--- /dev/null
++++ b/test/registered/unit/layers/test_mamba2_track_ssm_indices.py
+@@ -0,0 +1,121 @@
++"""A tracked SSM position that sits on the global chunk grid must be read from
++`h`, not rebuilt: rebuilding it is numerically fine but not bit-exact, which
++makes the cached state drift with the prefill batch composition.
++"""
++
++import unittest
++from types import SimpleNamespace
++
++import torch
++
++from sglang.srt.layers.attention.hybrid_linear_attn_backend import Mamba2AttnBackend
++from sglang.test.ci.ci_register import register_cpu_ci
++
++register_cpu_ci(est_time=9, suite="base-a-test-cpu")
++
++CHUNK = 128
++
++
++def _backend():
++    backend = object.__new__(Mamba2AttnBackend)
++    backend.device = "cpu"
++    backend._mamba_chunk_size = CHUNK
++    return backend
++
++
++def _forward_batch(extend_lens, prefix_lens, track_seqlens, track_mask):
++    return SimpleNamespace(
++        extend_seq_lens=torch.tensor(extend_lens),
++        extend_prefix_lens=torch.tensor(prefix_lens),
++        mamba_track_seqlens=torch.tensor(track_seqlens),
++        mamba_track_mask=torch.tensor(track_mask),
++        mamba_track_indices=torch.arange(100, 100 + len(extend_lens)),
++    )
++
++
++def _split(extend_lens, prefix_lens, track_seqlens, track_mask):
++    backend = _backend()
++    cache_indices = torch.arange(len(extend_lens))
++    (
++        _track_chunk_idx,
++        h_src,
++        h_dst,
++        _h_batch_src,
++        _final_src,
++        _final_dst,
++        seq_idx,
++        end_locs,
++        recompute_dst,
++    ) = backend._init_track_ssm_indices(
++        cache_indices,
++        _forward_batch(extend_lens, prefix_lens, track_seqlens, track_mask),
++    )
++    return h_src, h_dst, seq_idx, end_locs, recompute_dst
++
++
++class TestMamba2TrackSsmIndices(unittest.TestCase):
++    def test_on_grid_request_reads_h(self):
++        # req0 is chunk-aligned, so req1 starts at flat 256 and its tracked
++        # position 256 + 128 is on the grid.
++        h_src, h_dst, seq_idx, _end_locs, recompute_dst = _split(
++            extend_lens=[256, 320],
++            prefix_lens=[0, 0],
++            track_seqlens=[0, 200],
++            track_mask=[False, True],
++        )
++        self.assertEqual(h_src.tolist(), [3])
++        self.assertEqual(h_dst.tolist(), [101])
++        self.assertEqual(seq_idx.numel(), 0)
++        self.assertEqual(recompute_dst.numel(), 0)
++
++    def test_off_grid_request_is_rebuilt(self):
++        # req0 is not chunk-aligned, so req1 starts at flat 192 and its tracked
++        # position 192 + 128 = 320 is not a multiple of 128.
++        h_src, _h_dst, seq_idx, end_locs, recompute_dst = _split(
++            extend_lens=[192, 320],
++            prefix_lens=[0, 0],
++            track_seqlens=[0, 200],
++            track_mask=[False, True],
++        )
++        self.assertEqual(h_src.numel(), 0)
++        self.assertEqual(seq_idx.tolist(), [1])
++        self.assertEqual(end_locs.tolist(), [320])
++        self.assertEqual(recompute_dst.tolist(), [101])
++
++    def test_mixed_batch_splits_without_overlap(self):
++        # req0 on grid (flat 0), req1 off grid (flat 192), req2 on grid (flat 512).
++        h_src, h_dst, seq_idx, end_locs, recompute_dst = _split(
++            extend_lens=[192, 320, 448],
++            prefix_lens=[0, 0, 0],
++            track_seqlens=[150, 200, 300],
++            track_mask=[True, True, True],
++        )
++        self.assertEqual(h_src.tolist(), [1, 6])
++        self.assertEqual(h_dst.tolist(), [100, 102])
++        self.assertEqual(seq_idx.tolist(), [1])
++        self.assertEqual(end_locs.tolist(), [320])
++        self.assertEqual(recompute_dst.tolist(), [101])
++        self.assertEqual(
++            sorted(h_dst.tolist() + recompute_dst.tolist()), [100, 101, 102]
++        )
++
++    def test_end_locs_are_chunk_boundaries_of_the_flat_batch(self):
++        # h is indexed by flat chunk, so a read index must satisfy
++        # h_src * CHUNK == the flat token the state belongs to.
++        starts = [0, 192, 512]
++        h_src, h_dst, seq_idx, end_locs, _recompute_dst = _split(
++            extend_lens=[192, 320, 448],
++            prefix_lens=[0, 0, 0],
++            track_seqlens=[150, 200, 300],
++            track_mask=[True, True, True],
++        )
++        want = {100: starts[0] + 128, 102: starts[2] + 256}
++        for dst, src in zip(h_dst.tolist(), h_src.tolist()):
++            self.assertEqual(src * CHUNK, want[dst])
++        for i, end in zip(seq_idx.tolist(), end_locs.tolist()):
++            self.assertNotEqual(end % CHUNK, 0)
++            self.assertGreaterEqual(end, starts[i])
++
++
++if __name__ == "__main__":
++    unittest.main()
 diff --git a/test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py b/test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py
 new file mode 100644
 index 0000000000..26d3574303
@@ -204,3 +1845,282 @@ index 0000000000..26d3574303
 +
 +if __name__ == "__main__":
 +    unittest.main()
+diff --git a/test/registered/unit/mem_cache/test_mem_pool_host.py b/test/registered/unit/mem_cache/test_mem_pool_host.py
+index 2352e0127f..98829ca9b8 100644
+--- a/test/registered/unit/mem_cache/test_mem_pool_host.py
++++ b/test/registered/unit/mem_cache/test_mem_pool_host.py
+@@ -238,6 +238,117 @@ class TestHostMemoryBudget(CustomTestCase):
+         ), unittest.mock.patch.object(base, "get_world_group", return_value=fake_group):
+             self.assertEqual(base.ranks_per_host(), 8)
+ 
++    def _budget_in_group(self, own_reading, peer_readings, ranks=8):
++        # The reduce stands in for the gloo collective: every rank of the
++        # sync group contributes its own psutil reading and all of them get
++        # the minimum back.
++        fake_group = object()
++        seen = {}
++
++        def fake_all_reduce(tensor, op, group):
++            seen["op"] = op
++            seen["group"] = group
++            seen["dtype"] = tensor.dtype
++            tensor.fill_(min([int(tensor.item()), *peer_readings]))
++
++        fake_mem = unittest.mock.Mock(available=own_reading)
++        with (
++            unittest.mock.patch.object(base, "ranks_per_host", return_value=ranks),
++            unittest.mock.patch.object(
++                base.psutil, "virtual_memory", return_value=fake_mem
++            ),
++            unittest.mock.patch.object(
++                base, "host_memory_sync_group", return_value=fake_group
++            ),
++            unittest.mock.patch.object(
++                base.torch.distributed, "all_reduce", side_effect=fake_all_reduce
++            ),
++        ):
++            budget = base.host_memory_budget_bytes()
++        return budget, seen, fake_group
++
++    def test_budget_is_sized_from_the_group_wide_minimum_reading(self):
++        # Co-located ranks reach a pool's sizing guard at different times; the
++        # split is only right when all of them size against one reading taken
++        # before any of them allocates, and the lowest reading is the one that
++        # already reflects every pool the group built earlier.
++        gib = 1024**3
++        reserve = base.HICACHE_HOST_MEMORY_RESERVE_BYTES
++        budget, seen, fake_group = self._budget_in_group(
++            own_reading=reserve + 64 * gib,
++            peer_readings=[reserve + 96 * gib, reserve + 40 * gib],
++        )
++        self.assertEqual(budget, 40 * gib // 8)
++        self.assertEqual(seen["op"], torch.distributed.ReduceOp.MIN)
++        self.assertIs(seen["group"], fake_group)
++        # Byte counts must not go through a float that rounds them.
++        self.assertEqual(seen["dtype"], torch.int64)
++
++    def test_budget_reads_locally_without_a_sync_group(self):
++        fake_mem = unittest.mock.Mock(available=self._AVAILABLE)
++        with (
++            unittest.mock.patch.object(base, "ranks_per_host", return_value=8),
++            unittest.mock.patch.object(
++                base.psutil, "virtual_memory", return_value=fake_mem
++            ),
++            unittest.mock.patch.object(
++                base, "host_memory_sync_group", return_value=None
++            ),
++            unittest.mock.patch.object(
++                base.torch.distributed, "all_reduce"
++            ) as all_reduce,
++        ):
++            budget = base.host_memory_budget_bytes()
++        all_reduce.assert_not_called()
++        self.assertEqual(
++            budget, (self._AVAILABLE - base.HICACHE_HOST_MEMORY_RESERVE_BYTES) // 8
++        )
++
++    def test_sync_group_is_the_tp_cpu_group(self):
++        # TP ranks of one pipeline stage build the same host pools in the same
++        # order, so a collective issued once per pool is matched on all of
++        # them; pipeline stages are not (they own different layers).
++        cpu_group = object()
++        fake_tp_group = unittest.mock.Mock(world_size=8, cpu_group=cpu_group)
++        with (
++            unittest.mock.patch.object(
++                torch.distributed, "is_initialized", return_value=True
++            ),
++            unittest.mock.patch.object(
++                base, "get_tp_group", return_value=fake_tp_group
++            ),
++        ):
++            self.assertIs(base.host_memory_sync_group(), cpu_group)
++
++    def test_single_rank_has_no_sync_group(self):
++        fake_tp_group = unittest.mock.Mock(world_size=1, cpu_group=object())
++        with (
++            unittest.mock.patch.object(
++                torch.distributed, "is_initialized", return_value=True
++            ),
++            unittest.mock.patch.object(
++                base, "get_tp_group", return_value=fake_tp_group
++            ),
++        ):
++            self.assertIsNone(base.host_memory_sync_group())
++
++    def test_no_sync_group_before_distributed_init(self):
++        with unittest.mock.patch.object(
++            torch.distributed, "is_initialized", return_value=False
++        ):
++            self.assertIsNone(base.host_memory_sync_group())
++
++    def test_no_sync_group_before_the_tp_group_is_built(self):
++        with (
++            unittest.mock.patch.object(
++                torch.distributed, "is_initialized", return_value=True
++            ),
++            unittest.mock.patch.object(
++                base, "get_tp_group", side_effect=AssertionError("not initialized")
++            ),
++        ):
++            self.assertIsNone(base.host_memory_sync_group())
++
+ 
+ class TestHostPoolGroup(CustomTestCase):
+     @staticmethod
+diff --git a/test/registered/unit/mem_cache/test_unified_radix_cache_unittest.py b/test/registered/unit/mem_cache/test_unified_radix_cache_unittest.py
+index ae9f0f889a..dd06dc37f7 100644
+--- a/test/registered/unit/mem_cache/test_unified_radix_cache_unittest.py
++++ b/test/registered/unit/mem_cache/test_unified_radix_cache_unittest.py
+@@ -1675,6 +1675,65 @@ class UnifiedRadixCacheSuite:
+         )
+         cache.sanity_check()
+ 
++    def test_cache_unfinished_req_degrades_when_mamba_pool_exhausted(self):
++        """A caching-path mamba slot alloc that still fails after the one-shot
++        eviction (every cached state pinned by running requests or in-flight
++        hicache DMAs) must skip caching the chunk, never kill the scheduler:
++        nothing is inserted, the request keeps its live state and prefix, no
++        slot leaks, and the failure is observable (metric + WARNING census)."""
++        if not self.cfg.has_mamba:
++            self.skipTest("requires Mamba")
++        cache, allocator, req_to_token_pool = build_fixture(self.cfg)
++
++        req = self._make_req(req_to_token_pool)
++        tokens = self._make_seq(1, 3)
++        req.origin_input_ids = array("q", tokens)
++        req.output_ids = array("q")
++        req.full_untruncated_fill_ids = array("q", tokens)
++        req.set_extend_range(
++            len(req.prefix_indices), len(req.full_untruncated_fill_ids)
++        )
++        kv_len = len(tokens)
++        kv_indices = self._alloc(allocator, kv_len)
++        req_to_token_pool.write((req.req_pool_idx, slice(0, kv_len)), kv_indices)
++        req.kv_committed_len = kv_len
++        req.last_node = cache.root_node_handle()
++        req.cache_protected_len = 0
++        req.swa_uuid_for_lock = None
++        req.extra_key = None
++        req.mamba_last_track_seqlen = kv_len
++
++        pool = req_to_token_pool.mamba_allocator
++        live_slot = int(req.mamba_pool_idx)
++        free_before = pool.available_size()
++        collector = mock.Mock()
++        cache.metrics_collector = collector
++        mamba_logger = "sglang.srt.mem_cache.unified_cache.components.mamba_component"
++
++        # The pool hands out nothing and eviction cannot free anything.
++        with (
++            mock.patch.object(pool, "alloc", return_value=None),
++            mock.patch.object(
++                cache, "evict_for_alloc", autospec=True
++            ) as evict_for_alloc,
++            self.assertLogs(mamba_logger, level="WARNING") as logs,
++        ):
++            cache.cache_unfinished_req(req)
++
++        evict_for_alloc.assert_called_once_with(EvictParams(num_tokens=0, mamba_num=1))
++        collector.increment_aux_alloc_failed.assert_called_once_with()
++        self.assertEqual(len(logs.output), 1)
++        self.assertIn("census", logs.output[0])
++
++        # Nothing was cached ...
++        self.assertEqual(list(_node_children(cache, cache.root_node_handle())), [])
++        # ... and the request is untouched: it still owns its live mamba slot,
++        # its prefix indices cover the whole fill, and the pool did not leak.
++        self.assertEqual(int(req.mamba_pool_idx), live_slot)
++        self.assertEqual(len(req.prefix_indices), kv_len)
++        self.assertEqual(pool.available_size(), free_before)
++        cache.sanity_check()
++
+     def test_swa_unfinished_req_preserves_existing_eviction_boundary(self):
+         if not self.cfg.has_swa or self.cfg.has_mamba:
+             self.skipTest("requires SWA without Mamba")
+@@ -6343,6 +6402,86 @@ class UnifiedRadixCacheSuite:
+         self.assertIs(prep.allocated_mamba_slot, retry_slot)
+         self.assertEqual(int(req.kv.mamba_pool_idx), int(retry_slot[0]))
+ 
++    def test_hicache_concurrent_full_and_mamba_load_back_on_shared_node(self):
++        """End-to-end regression for the cross-component load-back overlap
++        (production shape reported in #34975; fixed by #36317).
++
++        A load-back anchored at a descendant pins an evicted ancestor through
++        its Full-KV chain. Before that DMA acks, a second request anchors AT
++        the ancestor to restore its independently-evicted mamba state. The
++        mamba transfer must ride its own host lock rather than the Full
++        pending owner, so the second load-back commits, both acks drain, and
++        the tree stays consistent.
++        """
++        if not self.cfg.has_mamba or self.cfg.has_swa or self.cfg.page_size != 1:
++            self.skipTest("requires page_size=1 Full+Mamba")
++        cache, allocator, req_to_token_pool = build_fixture(self.cfg)
++        self._init_hicache(cache, write_policy="write_back")
++        core = cache.tree_core
++        MAMBA = ComponentType.MAMBA
++
++        chain = self._build_chain_pages(cache, allocator, req_to_token_pool, 4)
++        self.assertGreaterEqual(len(chain), 2, "need a >=2 node chain")
++        self._backup_tree(cache)
++        total = sum(_node_key_length(cache, n) for n in chain)
++        cache.evict(EvictParams(num_tokens=total + 16, mamba_num=64))
++
++        leaf = chain[-1]
++        self.assertTrue(core.is_full_device_evicted(leaf))
++        # An ancestor that is Full-evicted (so the leaf anchor's KV chain
++        # covers it) and mamba host-only (so a second anchor can target it).
++        ancestor = next(
++            (
++                n
++                for n in chain[:-1]
++                if core.is_full_device_evicted(n)
++                and core.component_has_host_value_only(n, MAMBA)
++            ),
++            None,
++        )
++        self.assertIsNotNone(
++            ancestor, "fixture produced no Full-evicted + mamba-host-only ancestor"
++        )
++
++        # Load-back 1: anchored at the leaf; its Full-KV chain pins the
++        # ancestor. The ack is withheld, so the pin stays live.
++        self.assertTrue(cache.load_back(leaf))
++        self.assertEqual(core.node_by_id(ancestor).load_back_pending_id, leaf)
++        # Commit republishes the Full device value before the ack, so a second
++        # anchor's Full chain stops above the ancestor; only its mamba state
++        # is still host-only.
++        self.assertFalse(core.is_full_device_evicted(ancestor))
++        self.assertTrue(core.component_has_host_value_only(ancestor, MAMBA))
++
++        # Load-back 2: anchored AT the still-pinned ancestor for its mamba
++        # state. Before #36317 this died with
++        # AssertionError: node <ancestor> pinned by load-back <leaf>, new anchor <ancestor>
++        req = self._make_req(req_to_token_pool)
++        req_to_token_pool.mamba_allocator.free(req.mamba_pool_idx.unsqueeze(0))
++        req.mamba_pool_idx = None
++        self.assertTrue(cache.load_back(ancestor, req=req))
++        self.assertIsNotNone(req.mamba_pool_idx)
++        # The Full pending owner is untouched by the aux transfer ...
++        self.assertEqual(core.node_by_id(ancestor).load_back_pending_id, leaf)
++        # ... whose source is protected by the mamba host lock until the ack.
++        self.assertGreater(
++            core.node_by_id(ancestor).component_data[MAMBA].host_lock_ref, 0
++        )
++
++        # Both DMAs ack; the Full pin drains and the mamba state is on device.
++        self._finish_pending_loads(cache)
++        for n in chain:
++            self.assertIsNone(
++                core.node_by_id(n).load_back_pending_id,
++                f"node {n} kept a stale load-back pin",
++            )
++        self.assertIsNotNone(_device_value(cache, ancestor, MAMBA))
++        self._release_ongoing_load_back_locks(cache)
++        self.assertEqual(
++            core.node_by_id(ancestor).component_data[MAMBA].host_lock_ref, 0
++        )
++        cache.sanity_check()
++
+     def test_hicache_swa_load_back_min_suffix(self):
+         """LOAD_BACK collects only the suffix nodes needed to cover sliding_window_size."""
+         if not self.cfg.has_swa:

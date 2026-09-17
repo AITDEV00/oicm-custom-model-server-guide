@@ -21,23 +21,56 @@ slice they were cut from) before handing them to `free_kv_row_segments`.
 
 | Item | SHA |
 |------|-----|
-| v0.5.19 base | `59f20bffdd` (tag commit `0bcd822377`) |
+| v0.5.19 base | tag commit `0bcd822377` (annotated tag object `59f20bffdd`) |
 | PR #38982 head at backport time | `9bf4ab4928` |
-| Backport commit | `0e71fd8af0` |
+| Backport tip | `f664ce5fb9` (chain below) |
+
+### Backport chain (v0.5.19 → tip)
+
+1. `0e71fd8af0` — PR #38982: coalesce touching kv-row segments before free
+   (fixes the abort-mid-prefill scheduler crash on Kimi-K3 TP8/DSPARK page-64)
+2. `a1bc7427e3` / `4a57e0e164` — adapt the PR's unit test to v0.5.19 allocator
+   semantics (no `_page_disjoint` here: the raw shape LEAKS 52 slots instead
+   of asserting; coalescing prevents the leak)
+3. `f3a7f5b08a` — **PR #34820** (merged 2026-09-09, AFTER v0.5.19): store
+   mamba prefix-cache checkpoints at the configured SSM state dtype (bf16
+   KDA state → fp32 track buffer, no double-round)
+4. `a6d0978f6f` + `bb60318c20` — **PR #36770** (OPEN upstream): graceful
+   Mamba cache exhaustion — skip caching a chunk instead of killing the
+   scheduler when HiCache DMA pins all candidate slots. Consciously carried
+   production hardening; drop when merged.
+5. `b31c387eb8` — **PR #38157** (OPEN upstream): read host MemAvailable once
+   per TP group before splitting the HiCache budget — prevents false
+   "Not enough host memory available" at multi-hundred-GB L2 sizes.
+6. `cc63b2ffe1` / `ee8651a1c7` / `f664ce5fb9` — v0.5.19 adaptation commits
+   for #34820 (missing ForwardMetadata fields, `to_device` helper, Mamba2
+   on-grid/off-grid track split — each caught by the build-time tests).
+
+### Already in v0.5.19 — verified via merge-base ancestry, do NOT re-pick
+
+`#33112` DCP+HiCache L2 (`1a3bea7`) · `#33639` Mamba branching (`3c533ac`) ·
+`#34808` mamba checkpoint depth under DCP (`c20acee`) · `#35084` DCP prefill
+sync removal (`f44a130`) · `#35412` decode checkpoint grid (`eac91ac3`;
+`mamba_track_grid` is page×LCM → 512 for TP8/DCP8/page-64, correct) ·
+`#36317` HiCache auxiliary load-back ownership (`5263568`).
 
 Patch: `kimi-k3-v0.5.19.patch` (= `git diff --binary v0.5.19..HEAD` from
 `/home/jyao/ADEO/mlops/sglang`, branch `backport/v0.5.19-kimi-k3-free-segments`).
 The Docker build applies this local file — it never downloads the PR.
 
-## Manual resolution made during the backport
+## Manual resolutions made during the backports
 
-Hunk 2 of the PR diff did not apply to v0.5.19: the SWA bookkeeping in
-`free_kv_row_segments` differs slightly from PR-branch `main`
-(`swa_dead` is `list[torch.Tensor]` here, not `list[tuple[...]]`). Applied
-manually: docstring extension + iterate over `_coalesce_touching_segments(segments)`.
-Hunk 1 (`_coalesce_touching_segments` helper) applied cleanly, and the PR's
-unit test `test/registered/unit/mem_cache/test_free_kv_row_segments_touching.py`
-is included.
+- **#38982 hunk 2**: v0.5.19's SWA bookkeeping in `free_kv_row_segments`
+  differs slightly from PR-branch main (`swa_dead` is `list[torch.Tensor]`
+  here, not `list[tuple[...]]`). Applied manually.
+- **#34820**: four conflicts resolved (assert reformat + track assertions in
+  `chunk_delta_h.py`; signature extensions in `kda.py`/`kda_prefill.py`;
+  metadata plumbing in `hybrid_linear_attn_backend.py`), plus three
+  v0.5.19-shape commits the build-time tests forced out (missing
+  `ForwardMetadata` fields, `to_device` helper, Mamba2 on-grid/off-grid
+  producer split).
+- **Tests at build time**: PR #38982 unit test + #34820 SSM-dtype tests +
+  mamba2 track-index tests run during `podman build` (15/15 pass).
 
 ## Build
 
