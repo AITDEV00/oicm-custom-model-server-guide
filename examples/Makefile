@@ -95,6 +95,10 @@ build-sglang-podman-qwen38flashnext: # Build custom model server image for SGLan
 	@podman build --platform=linux/amd64 -t oicm/sglang:qwen38flashnext-cu129-amd64 -f SGLang-podman-qwen38flashnext-cu129-amd64/Dockerfile SGLang-podman-qwen38flashnext-cu129-amd64
 	@podman tag oicm/sglang:qwen38flashnext-cu129-amd64 localhost/oicm/sglang:qwen38flashnext-cu129-amd64
 
+build-sglang-podman-dev-dsv41: # Build SGLang dev-dsv41 image (DeepSeek V4.1, cu130, lmsysorg/sglang:dev-dsv41 base)
+	@podman build --platform=linux/amd64 -t oicm/sglang:dev-dsv41-cu130-amd64 -f SGLang-podman-dev-dsv41-cu130-amd64/Dockerfile SGLang-podman-dev-dsv41-cu130-amd64
+	@podman tag oicm/sglang:dev-dsv41-cu130-amd64 localhost/oicm/sglang:dev-dsv41-cu130-amd64
+
 build-cputests: # Build CPU + Silero-VAD diagnostic image
 	@podman build --platform=linux/amd64 -t cpu-vad-diag:latest -f cputests/Dockerfile cputests
 
