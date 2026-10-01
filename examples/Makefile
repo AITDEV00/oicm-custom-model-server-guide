@@ -99,6 +99,14 @@ build-sglang-podman-dev-dsv41: # Build SGLang dev-dsv41 image (DeepSeek V4.1, cu
 	@podman build --platform=linux/amd64 -t oicm/sglang:dev-dsv41-cu130-amd64 -f SGLang-podman-dev-dsv41-cu130-amd64/Dockerfile SGLang-podman-dev-dsv41-cu130-amd64
 	@podman tag oicm/sglang:dev-dsv41-cu130-amd64 localhost/oicm/sglang:dev-dsv41-cu130-amd64
 
+build-sglang-podman-0.5.21-cu130: # Build custom model server image for SGLang v0.5.21 (CUDA 13.0 base, quiet startup harness)
+	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.21-cu130-amd64 -f SGLang-podman-v0.5.21-cu130-amd64/Dockerfile SGLang-podman-v0.5.21-cu130-amd64
+	@podman tag oicm/sglang:0.5.21-cu130-amd64 localhost/oicm/sglang:0.5.21-cu130-amd64
+
+push-sglang-podman-0.5.21-cu130: # Tag + push SGLang v0.5.21 cu130 image to Al Ain Harbor
+	@podman tag localhost/oicm/sglang:0.5.21-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.21-cu130-amd64
+	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.21-cu130-amd64
+
 build-cputests: # Build CPU + Silero-VAD diagnostic image
 	@podman build --platform=linux/amd64 -t cpu-vad-diag:latest -f cputests/Dockerfile cputests
 
