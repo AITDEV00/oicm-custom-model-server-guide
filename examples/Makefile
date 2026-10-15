@@ -107,6 +107,18 @@ push-sglang-podman-0.5.21-cu130: # Tag + push SGLang v0.5.21 cu130 image to Al A
 	@podman tag localhost/oicm/sglang:0.5.21-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.21-cu130-amd64
 	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.21-cu130-amd64
 
+# Pre-staged for the v0.5.22 release (harness is version-agnostic; only the
+# upstream base tag in the Dockerfile's FROM line moves). If lmsysorg has not
+# published v0.5.22-cu130 yet, the build will fail at the FROM pull -- adjust
+# that single line, nothing else, once the tag exists.
+build-sglang-podman-0.5.22-cu130: # Build custom model server image for SGLang v0.5.22 (CUDA 13.0 base, quiet startup harness)
+	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.22-cu130-amd64 -f SGLang-podman-v0.5.22-cu130-amd64/Dockerfile SGLang-podman-v0.5.22-cu130-amd64
+	@podman tag oicm/sglang:0.5.22-cu130-amd64 localhost/oicm/sglang:0.5.22-cu130-amd64
+
+push-sglang-podman-0.5.22-cu130: # Tag + push SGLang v0.5.22 cu130 image to Al Ain Harbor
+	@podman tag localhost/oicm/sglang:0.5.22-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
+	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
+
 build-cputests: # Build CPU + Silero-VAD diagnostic image
 	@podman build --platform=linux/amd64 -t cpu-vad-diag:latest -f cputests/Dockerfile cputests
 
