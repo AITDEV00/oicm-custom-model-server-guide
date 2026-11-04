@@ -86,6 +86,8 @@ nav:
       - v0.5.16: sglang/v0.5.16.md
       - v0.5.17: sglang/v0.5.17.md
       - v0.5.18: sglang/v0.5.18.md
+  - SGLang-Omni:
+      - Drama 3 (H200 tuning): sglang/fishaudio-drama3.md
   - Diagnostics & tooling:
       - diagnostics/index.md
       - Diagnostics image: diagnostics/diagnostics.md

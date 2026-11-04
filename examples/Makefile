@@ -119,6 +119,25 @@ push-sglang-podman-0.5.22-cu130: # Tag + push SGLang v0.5.22 cu130 image to Al A
 	@podman tag localhost/oicm/sglang:0.5.22-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
 	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
 
+build-sglang-podman-omni-dev: # Build SGLang-Omni v0.2.0 serving image (cu130, lmsysorg/sglang 0.5.22 base)
+	@podman build --platform=linux/amd64 -t oicm/sglang-omni:0.2.0-cu130-amd64 -f SGLang-podman-omni-dev-cu130-amd64/Dockerfile SGLang-podman-omni-dev-cu130-amd64
+	@podman tag oicm/sglang-omni:0.2.0-cu130-amd64 localhost/oicm/sglang-omni:0.2.0-cu130-amd64
+
+# Delivery goes through MinIO, NOT podman push. Direct push measured 2.2 MB/s
+# from this box and re-uploads every layer uncompressed (0 percent dedupe even
+# against layers Harbor already has as gzip): ~5 h for this image. The relay is
+# ~60 min because the node talks to Harbor in-cluster.
+deliver-sglang-podman-omni-dev: build-sglang-podman-omni-dev # Ship SGLang-Omni image to Al Ain Harbor via S3 relay (~60 min)
+	@SGLang-podman-omni-dev-cu130-amd64/deliver-image.sh \
+	        localhost/oicm/sglang-omni:0.2.0-cu130-amd64 \
+	        openinnovationai/platform/mlops/mlops-serving/sglang-omni \
+                0.2.0-cu130-amd64
+
+# Only correct when the layers already exist in Harbor. Prefer deliver-* instead.
+push-sglang-podman-omni-dev: # Tag + podman push SGLang-Omni image (slow; prefer deliver)
+	@podman tag localhost/oicm/sglang-omni:0.2.0-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang-omni:0.2.0-cu130-amd64
+	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang-omni:0.2.0-cu130-amd64
+
 build-cputests: # Build CPU + Silero-VAD diagnostic image
 	@podman build --platform=linux/amd64 -t cpu-vad-diag:latest -f cputests/Dockerfile cputests
 

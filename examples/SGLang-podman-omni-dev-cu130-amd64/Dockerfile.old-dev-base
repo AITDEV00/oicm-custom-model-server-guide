@@ -1,0 +1,151 @@
+# =============================================================================
+# OICM SGLang-Omni serving image -- CUDA 13.0 variant.
+#
+# SGLang-Omni is the *pipeline* server (preprocessing -> engine -> vocoder) that
+# serves omni-modality models: TTS (Fish Audio Drama 3 / S2-Pro), ASR, and
+# audio/vision pipelines. It is a SEPARATE product from SGLang proper and speaks
+# a different CLI, so the LLM/diffusion harness does not apply:
+#
+#   SGLang (this repo's other examples)   sglang serve | sglang.launch_server
+#   SGLang-Omni (this image)              sgl-omni serve
+#
+# BASE IMAGE CHOICE
+#   Upstream publishes ONLY the `dev` tag on Docker Hub -- there is no v0.2.0
+#   image. The `dev` tag tracks main, so it is pinned BY DIGEST below; the
+#   SGLang-Omni *source* is independently pinned to the v0.2.0 release tag, so
+#   this image is reproducible even though the tag it came from is not.
+#
+#   The base ships the CUDA-13 stack (torch 2.14.1+cu130, transformers 5.19.0,
+#   flash-attn-4) plus the drama-3 vocoder deps (descript-audio-codec 1.0.0 +
+#   descript-audiotools 0.7.2, both in the `fishaudio` extra). The base's sglang
+#   0.5.23 and flashinfer 0.7.2 are DOWNGRADED by the install below to 0.5.22 /
+#   0.7.1 -- sglang-omni v0.2.0's pins -- because it is NOT source-compatible
+#   with 0.5.23 (see the install step for the observed TypeError).
+#
+# AIR-GAP
+#   The base ENTRYPOINT (/usr/local/bin/sglang-omni-entrypoint) runs
+#   `git clone ... && pip install -e` at container start unless
+#   SGLANG_OMNI_AUTO_CLONE=0. On an air-gapped cluster that is a guaranteed
+#   CrashLoopBackOff, so the package is baked here and the auto-clone disabled.
+# =============================================================================
+
+# Digest-pinned: the `dev` tag moves with main, the digest does not.
+# digest sha256:d2fbd80ec42c8a6d9dff4b8a4fdbee35d50c5a1b41aa8dc872925da6e0c82f6a
+FROM docker.io/hongccc/sglang-omni:dev@sha256:d2fbd80ec42c8a6d9dff4b8a4fdbee35d50c5a1b41aa8dc872925da6e0c82f6a
+
+# Never clone/install at runtime -- the package is baked below.
+ENV SGLANG_OMNI_AUTO_CLONE=0
+
+# OICM's Service and k8s /health probe target 8080. sgl-omni serves
+# GET /health (200 healthy / 503 starting), which satisfies both probes.
+EXPOSE 8080
+
+# Build steps need root; we drop to the non-root runtime user further down.
+USER root
+
+# git to fetch the pinned source at build time. The base already has curl and
+# ffmpeg/ffprobe/sox (the vocoder and reference-audio decoding need those).
+RUN set -ex && \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
+# SGLang-Omni, pinned to the v0.2.0 release tag (commit e8c635ecb9).
+#
+# FULL DEPENDENCY-RESOLVING INSTALL (uv, no --no-deps) -- deliberately. The base
+# image ships sglang 0.5.23, but sglang-omni v0.2.0 (and main, as of 2026-11-03)
+# pins sglang==0.5.22 and is NOT source-compatible with 0.5.23:
+#
+#   sglang 0.5.23 ModelRunner.init_kv_cache_configurator(self, draft_parallel_layout=None)
+#   sglang-omni v0.2.0 override          init_kv_cache_configurator(self)
+#
+# The engine calls the override WITH the new argument, so on 0.5.23 the
+# tts_engine stage dies at startup with
+#   TypeError: SGLModelRunner.init_kv_cache_configurator() takes 1 positional
+#   argument but 2 were given
+# (observed live on the H200 cluster, pod qt66m, 5 restarts). The official docs
+# install inside this very image with plain `uv pip install "sglang-omni==0.2.0"`
+# -- i.e. WITH resolution, which downgrades sglang to 0.5.22 and flashinfer to
+# the pinned 0.7.1. Do NOT shortcut this with --no-deps: imports succeed on
+# 0.5.23 (config view works too) and the mismatch only fires at engine build
+# time on a real model, which no build-time smoke test reaches.
+#
+# Safety of the downgrade: torch stays (2.14.1+cu130 satisfies ==2.14.1 per PEP
+# 440 local-version rules), transformers 5.19.0 satisfied, flash-attn-4 b37
+# satisfies >=4.0.0b18. What uv changes: sglang 0.5.23->0.5.22, sglang-kernel
+# 0.4.10->(0.5.22's pin), flashinfer-python 0.7.2->0.7.1 -- all PyPI wheels with
+# their own prebuilt CUDA kernels, exactly the combination upstream ships.
+#
+# Non-editable on purpose; the source tree is deleted in the same layer so the
+# runtime image cannot drift from, or depend on, a checkout that is not there.
+ARG SGLANG_OMNI_VERSION=v0.2.0
+ARG SGLANG_OMNI_COMMIT=e8c635ecb9c68bcf2fbc32ceb3c40f85f3590657
+
+RUN set -ex && \
+    git clone --depth 1 --branch "${SGLANG_OMNI_VERSION}" \
+        https://github.com/sgl-project/sglang-omni.git /tmp/sglang-omni-src && \
+    test "$(git -C /tmp/sglang-omni-src rev-parse HEAD)" = "${SGLANG_OMNI_COMMIT}" && \
+    cd /tmp/sglang-omni-src && \
+    /usr/local/bin/uv pip install \
+        --python /opt/sglang/bin/python3 \
+        --prerelease=allow -v ".[fishaudio]" && \
+    rm -rf /tmp/sglang-omni-src && \
+    /opt/sglang/bin/python3 -c \
+      "import sglang, flashinfer; assert sglang.__version__ == '0.5.22', sglang.__version__; assert flashinfer.__version__ == '0.7.1', flashinfer.__version__" && \
+    /opt/sglang/bin/sgl-omni --help > /dev/null
+
+# init_kv_cache_configurator must be signature-compatible after the downgrade:
+# sglang 0.5.22's ModelRunner takes only (self), matching the omni override.
+RUN /opt/sglang/bin/python3 -c \
+    "import inspect, sglang.srt.model_executor.model_runner as mr; \
+     sig = str(inspect.signature(mr.ModelRunner.init_kv_cache_configurator)); \
+     assert 'draft_parallel_layout' not in sig, sig; \
+     print('init_kv_cache_configurator OK:', sig)"
+
+# Create the runtime user with primary group 0. OICM runs us as exactly uid
+# 10000, but gid-0 + group-writable dirs keeps the image safe even if a future
+# tenant policy forces a different UID. The base has no `runner` user.
+RUN set -ex && \
+    useradd --uid 10000 --gid 0 runner && \
+    mkdir -p /home/runner /app && \
+    chown -R 10000:0 /home/runner /app && \
+    chmod -R g=u /home/runner /app && \
+    passwd -l root
+
+# Numeric USER so Kubernetes runAsNonRoot can validate it as non-root.
+USER 10000
+
+# HOME is set here for completeness; startup.sh re-points it to /tmp at runtime
+# because /home/runner is read-only under OICM.
+ENV HOME=/home/runner
+
+# Keep pip-installed user binaries on PATH.
+ENV PATH="$HOME/.local/bin:$PATH"
+
+# The NVIDIA runtime injects the driver.
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# sgl-omni stdlib-based arg normalizer (shared with the SGLang examples).
+COPY --chown=10000:0 startup.sh /app/startup.sh
+COPY --chown=10000:0 arg_normalizer.py /app/arg_normalizer.py
+
+# World-executable so it runs regardless of which UID OICM uses.
+RUN chmod 0755 /app/startup.sh /app/arg_normalizer.py
+
+# OICM does not set a custom workdir; /app matches the original convention.
+WORKDIR /app
+
+# Entrypoint script resolves the model path, points caches at /tmp, enables
+# cuda-compat only when the host driver needs it, normalizes EXTRA_ARGS via
+# /app/arg_normalizer.py, and execs sgl-omni. Debug dump is opt-in:
+# set DEBUG_DUMP=1 for a full post-mortem dump; default is off for quiet boots.
+ENTRYPOINT ["/app/startup.sh"]
+
+LABEL org.opencontainers.image.title="SGLang-Omni v0.2.0 serving (OICM)"
+LABEL org.opencontainers.image.version="omni-v0.2.0-cu130-amd64"
+LABEL org.opencontainers.image.base.name="docker.io/hongccc/sglang-omni:dev@sha256:d2fbd80ec42c8a6d9dff4b8a4fdbee35d50c5a1b41aa8dc872925da6e0c82f6a"
+LABEL ai.sglang-omni.version="v0.2.0"
+LABEL ai.sglang-omni.commit="e8c635ecb9c68bcf2fbc32ceb3c40f85f3590657"
+LABEL ai.sglang.version="0.5.22 (downgraded from the base's 0.5.23 to match omni v0.2.0's pin)"
+LABEL ai.flashinfer.version="0.7.1 (omni v0.2.0's pin)"
