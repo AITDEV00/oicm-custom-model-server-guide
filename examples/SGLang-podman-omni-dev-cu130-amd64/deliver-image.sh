@@ -64,7 +64,9 @@ command -v mc     >/dev/null || die "mc not found"
 command -v kubectl >/dev/null || die "kubectl not found"
 podman image exists "$IMG" || die "image not found locally: $IMG"
 [[ -f "$KUBECONFIG" ]] || die "kubeconfig not found: $KUBECONFIG"
-mc --insecure alias list 2>/dev/null | grep -q "^${MC_ALIAS}" \
+# grep -c, NOT grep -q: `-q` exits at the first match, the producer then dies of
+# SIGPIPE, and `set -o pipefail` turns that into a spurious failure (~4% of runs).
+mc --insecure alias list 2>/dev/null | grep -c "^${MC_ALIAS}" >/dev/null \
     || die "mc alias '$MC_ALIAS' not configured (run: mc alias set ...)"
 kubectl get nodes >/dev/null 2>&1 || die "cannot reach cluster with $KUBECONFIG"
 

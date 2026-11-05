@@ -1,0 +1,48 @@
+# =============================================================================
+# In-cluster staging pod for the S3 -> containerd -> registry image relay.
+#
+# Purpose: terminate the S3 download INSIDE the cluster (MinIO over the local
+# network, ~150 MB/s) instead of pushing 45 GB from the dev box over a lossy
+# 0.14 MB/s-per-connection egress link.
+#
+# Why these fields:
+#   privileged        - needs the host's containerd socket + /usr/bin/ctr, and
+#                       the host binary must run from the POD netns (the host
+#                       netns on this node cannot reach the registry; DNS also
+#                       breaks under `nsenter -m`).
+#   nodeName (pinned) - pins staging to adeo-gpu-02, which has 563 G free. The
+#                       tar (~45 G) + unpacked blobs (~46 G) must both fit.
+#   /host mount       - host root at /host gives /host/usr/bin/ctr, /host/tmp
+#                       (scratch space on the node's real disk) and /host/run.
+#
+# RKE2/Canal: containerd socket is /run/k3s/containerd/containerd.sock
+# (NOT /run/containerd/containerd.sock) even though crictl reports "containerd".
+# =============================================================================
+apiVersion: v1
+kind: Pod
+metadata:
+  name: img-staging
+  namespace: pause-push
+  labels:
+    app: img-staging
+spec:
+  nodeName: adeo-gpu-02
+  hostNetwork: true
+  hostPID: true
+  restartPolicy: Never
+  tolerations:
+    - operator: Exists
+  containers:
+    - name: staging
+      image: registry.adeoaiengine.ecouncil.ae/submariner/nettest:0.24.0
+      command: ["sleep", "14400"]
+      securityContext:
+        privileged: true
+      volumeMounts:
+        - name: host
+          mountPath: /host
+  volumes:
+    - name: host
+      hostPath:
+        path: /
+        type: Directory

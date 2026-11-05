@@ -119,6 +119,40 @@ push-sglang-podman-0.5.22-cu130: # Tag + push SGLang v0.5.22 cu130 image to Al A
 	@podman tag localhost/oicm/sglang:0.5.22-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
 	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
 
+# Kimi-K3.1-Pro. NOT a v0.5.x release build: no tagged SGLang release can load
+# this model (v0.5.23 has no KimiK31ForConditionalGeneration and no 'kimi_k31'
+# model_type). Derived from the official preview image, which upstream builds
+# from the kimi-k3.1-day-0 branch with docker/k31.Dockerfile (10 FlashMLA ops,
+# FlashInfer DynBlock at 1024 experts, Rust TreeCore, Prims-TS, DeepGEMM,
+# patched Dynamo). See the example's README.md.
+build-sglang-podman-kimi-k31-pro: # Build Kimi-K3.1-Pro (DFLASH) serving image from lmsysorg/sglang:dev-kimi-k31-pro
+	@podman build --platform=linux/amd64 -t oicm/sglang:kimi-k31-pro-cu130-amd64 -f SGLang-podman-kimi-k31-pro-cu130-amd64/Dockerfile SGLang-podman-kimi-k31-pro-cu130-amd64
+	@podman tag oicm/sglang:kimi-k31-pro-cu130-amd64 localhost/oicm/sglang:kimi-k31-pro-cu130-amd64
+
+verify-sglang-podman-kimi-k31-pro: # Re-run all 3 K3.1 build gates against the built image (no GPU needed)
+	@echo '--- gate 1: compiled K3.1 components (upstream verify_image.py) ---'
+	@podman run --rm -e HOME=/tmp --entrypoint python3 oicm/sglang:kimi-k31-pro-cu130-amd64 /opt/k31-image/verify_image.py
+	@echo '--- gate 2: KimiK31 model class + config registration ---'
+	@podman run --rm -e HOME=/tmp --entrypoint python3 oicm/sglang:kimi-k31-pro-cu130-amd64 -c "from sglang.srt.models.kimi_k3 import KimiK31ForConditionalGeneration as K; print('  ', K.__name__)"
+	@echo '--- gate 3: DFLASH flag set in the argparser ---'
+	@podman run --rm -e HOME=/tmp --entrypoint python3 oicm/sglang:kimi-k31-pro-cu130-amd64 /app/k31_flags_check.py
+
+# Delivery goes through MinIO, NOT podman push (same reasoning as omni-dev: the
+# direct path is 0.14 MB/s per TCP connection and re-uploads every layer
+# uncompressed). This image's Dockerfile puts the OICM harness LAST as a single
+# COPY, so a script edit rebuilds in ~6 s / 2 layers; deliver-image.sh then
+# moves only the changed blob. First delivery ~35 min, re-delivery ~3 min.
+deliver-sglang-podman-kimi-k31-pro: build-sglang-podman-kimi-k31-pro # Ship K3.1 image to Al Ain Harbor via MinIO relay
+	@SGLang-podman-kimi-k31-pro-cu130-amd64/deliver-image.sh \
+		localhost/oicm/sglang:kimi-k31-pro-cu130-amd64 \
+		openinnovationai/platform/mlops/mlops-serving/sglang \
+		kimi-k31-pro-cu130-amd64
+
+# Only correct when every layer already exists in Harbor. Prefer deliver-* .
+push-sglang-podman-kimi-k31-pro: # Tag + podman push K3.1 image (slow; prefer deliver)
+	@podman tag localhost/oicm/sglang:kimi-k31-pro-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:kimi-k31-pro-cu130-amd64
+	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:kimi-k31-pro-cu130-amd64
+
 build-sglang-podman-omni-dev: # Build SGLang-Omni v0.2.0 serving image (cu130, lmsysorg/sglang 0.5.22 base)
 	@podman build --platform=linux/amd64 -t oicm/sglang-omni:0.2.0-cu130-amd64 -f SGLang-podman-omni-dev-cu130-amd64/Dockerfile SGLang-podman-omni-dev-cu130-amd64
 	@podman tag oicm/sglang-omni:0.2.0-cu130-amd64 localhost/oicm/sglang-omni:0.2.0-cu130-amd64
