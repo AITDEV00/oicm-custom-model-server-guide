@@ -1,5 +1,8 @@
 *.tar
 
+# Local malformed Fundorch placeholder; not a source/example file.
+examples/vLLM-fundorch/minir
+
 # MkDocs build output
 /site/
 # VibeVoice incident logs (contain real interview content - keep local only)
