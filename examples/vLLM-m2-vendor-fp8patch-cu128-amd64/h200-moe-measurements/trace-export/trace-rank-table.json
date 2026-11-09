@@ -1,0 +1,818 @@
+[
+  {
+    "rank": 0,
+    "size": 16449432199,
+    "bad": 0,
+    "kernels": 65467,
+    "span_ms": 470.019947265625,
+    "busy_ms": 337.65777685546874,
+    "gap_ms": 132.36217041015624,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 30.2386953125
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 90.76636865234374
+      },
+      "expert fused GEMM": {
+        "count": 3595,
+        "busy_ms": 76.62227978515625
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.93305517578125
+      },
+      "other GPU kernel": {
+        "count": 19154,
+        "busy_ms": 45.6859140625
+      },
+      "other linear GEMM": {
+        "count": 14973,
+        "busy_ms": 56.5644990234375
+      }
+    },
+    "top": [
+      {
+        "name": "fused_moe_kernel",
+        "count": 3595,
+        "sum_ms": 76.62225500000001
+      },
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 49.284074999999994
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 41.482285
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 26.107848999999998
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 20.694737
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.931438
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 12.261579
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.932851000000001
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 8.663238999999999
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.5438
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.393205
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 8.161604
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.694027
+      }
+    ]
+  },
+  {
+    "rank": 1,
+    "size": 16444236030,
+    "bad": 0,
+    "kernels": 65467,
+    "span_ms": 469.33481591796874,
+    "busy_ms": 335.1299311523438,
+    "gap_ms": 134.20488476562497,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 29.22970263671875
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 109.0661435546875
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 58.06432763671875
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.7920673828125
+      },
+      "other GPU kernel": {
+        "count": 19154,
+        "busy_ms": 44.90702294921875
+      },
+      "other linear GEMM": {
+        "count": 14972,
+        "busy_ms": 56.2335615234375
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 67.90283199999999
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 58.064277000000004
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 41.163285
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 26.052918
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 20.017815
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.695065000000001
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 12.242403
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.824769
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.507449000000001
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5579,
+        "sum_ms": 8.328664
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 8.308088
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.7895389999999995
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.689408
+      }
+    ]
+  },
+  {
+    "rank": 2,
+    "size": 16398240314,
+    "bad": 0,
+    "kernels": 65468,
+    "span_ms": 469.73968505859375,
+    "busy_ms": 337.86123388671876,
+    "gap_ms": 131.87845117187499,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 28.95336669921875
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 116.5760146484375
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 53.9108984375
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.76475732421875
+      },
+      "other GPU kernel": {
+        "count": 19154,
+        "busy_ms": 44.6275068359375
+      },
+      "other linear GEMM": {
+        "count": 14973,
+        "busy_ms": 56.18630419921875
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 73.708352
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 53.910814
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 42.867621
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 26.043877000000002
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 19.797881
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.704539
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 12.252012
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.768013999999999
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.48833
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.289564
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 8.208758
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.651328
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.6818990000000005
+      }
+    ]
+  },
+  {
+    "rank": 3,
+    "size": 16487485476,
+    "bad": 0,
+    "kernels": 65467,
+    "span_ms": 469.512171875,
+    "busy_ms": 340.83537060546877,
+    "gap_ms": 128.6768012695312,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 28.83827783203125
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 121.6345576171875
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 51.0686484375
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.80730859375
+      },
+      "other GPU kernel": {
+        "count": 19153,
+        "busy_ms": 45.423953125
+      },
+      "other linear GEMM": {
+        "count": 14973,
+        "busy_ms": 56.2182724609375
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 72.534251
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 51.068572
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 49.100235
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 26.015598999999998
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 19.681819
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.689148
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 12.24287
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.751638000000002
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.546137
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.404234
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 8.115007
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.636821
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.686679
+      }
+    ]
+  },
+  {
+    "rank": 4,
+    "size": 16416891907,
+    "bad": 0,
+    "kernels": 65467,
+    "span_ms": 469.850583984375,
+    "busy_ms": 341.7876279296875,
+    "gap_ms": 128.0629560546875,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 28.6283681640625
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 126.80900732421875
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 48.6027822265625
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.59930029296875
+      },
+      "other GPU kernel": {
+        "count": 19154,
+        "busy_ms": 44.4560703125
+      },
+      "other linear GEMM": {
+        "count": 14972,
+        "busy_ms": 55.83445166015625
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 79.95522100000001
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 48.602681
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 46.853771
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5132,
+        "sum_ms": 25.900955999999997
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 19.535759
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.455354999999999
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 12.221229
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.718662
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.460934
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.358782
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 8.040652
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.566676
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.669081
+      }
+    ]
+  },
+  {
+    "rank": 5,
+    "size": 16630687080,
+    "bad": 0,
+    "kernels": 65468,
+    "span_ms": 469.5527504882813,
+    "busy_ms": 335.565423828125,
+    "gap_ms": 133.98732666015627,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 28.6694267578125
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 121.6374765625
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 47.1152470703125
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.7332919921875
+      },
+      "other GPU kernel": {
+        "count": 19154,
+        "busy_ms": 44.358859375
+      },
+      "other linear GEMM": {
+        "count": 14973,
+        "busy_ms": 56.2184658203125
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 81.70503599999999
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 47.115159
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 39.932398
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 26.069305
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 19.628026
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.709914000000001
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 12.255607
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.722684
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.490966
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.305678
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 8.011329
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.533819
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.688289
+      }
+    ]
+  },
+  {
+    "rank": 6,
+    "size": 16377113421,
+    "bad": 0,
+    "kernels": 65467,
+    "span_ms": 469.88816796875,
+    "busy_ms": 346.1546630859375,
+    "gap_ms": 123.7335048828125,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 28.29055615234375
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 133.89990283203124
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 46.20848046875
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.202615234375
+      },
+      "other GPU kernel": {
+        "count": 19153,
+        "busy_ms": 44.511296875
+      },
+      "other linear GEMM": {
+        "count": 14973,
+        "busy_ms": 56.18392138671875
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 82.625272
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 51.274617
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 46.208404
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 25.972844999999996
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 19.412924
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.708855
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 11.898711
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.572659
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.645211
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.322316
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 7.8121480000000005
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.368904000000001
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.575432
+      }
+    ]
+  },
+  {
+    "rank": 7,
+    "size": 16508081108,
+    "bad": 0,
+    "kernels": 65468,
+    "span_ms": 470.1565458984375,
+    "busy_ms": 341.35246484375,
+    "gap_ms": 128.80408105468752,
+    "categories": {
+      "attention/rope": {
+        "count": 5704,
+        "busy_ms": 28.289734375
+      },
+      "communication/TP allreduce or allgather": {
+        "count": 9424,
+        "busy_ms": 129.37283642578126
+      },
+      "expert fused GEMM": {
+        "count": 3596,
+        "busy_ms": 45.99059033203125
+      },
+      "expert route/quant/align/support": {
+        "count": 12617,
+        "busy_ms": 37.059193359375
+      },
+      "other GPU kernel": {
+        "count": 19154,
+        "busy_ms": 44.50678759765625
+      },
+      "other linear GEMM": {
+        "count": 14973,
+        "busy_ms": 56.292759765625
+      }
+    },
+    "top": [
+      {
+        "name": "void vllm::cross_device_reduce_1stage<__nv_bfloat16, 8>(vllm::RankData*, vllm::RankSignals, vllm::Signal*, __nv_bfloat16*, int, int)",
+        "count": 5611,
+        "sum_ms": 84.285133
+      },
+      {
+        "name": "fused_moe_kernel",
+        "count": 3596,
+        "sum_ms": 45.990513
+      },
+      {
+        "name": "ncclDevKernel_AllGather_RING_LL(ncclDevKernelArgsStorage<4096ul>)",
+        "count": 3813,
+        "sum_ms": 45.087675000000004
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_splitK_TNT",
+        "count": 5133,
+        "sum_ms": 26.068027999999998
+      },
+      {
+        "name": "void cutlass::device_kernel<flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > > >(flash::enable_sm90_or_later<flash::FlashAttnFwdSm90<flash::CollectiveMainloopFwdSm90<2, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cute::tuple<cute::C<64>, cute::C<96>, cute::C<128> >, 128, cutlass::float_e4m3_t, float, cutlass::arch::Sm90, true, false, false, true, true, false, false, true, true, true, true, false, cutlass::bfloat16_t, 1>, flash::CollectiveEpilogueFwd<cute::tuple<cute::C<64>, cute::C<128>, cute::C<96> >, cute::tuple<cute::C<1>, cute::C<1>, cute::C<1> >, cutlass::bfloat16_t, cutlass::arch::Sm90, 128, true, true, true, true, 1>, flash::VarlenDynamicPersistentTileScheduler<64, 128, 128, true, true, true> > >::Params)",
+        "count": 1891,
+        "sum_ms": 19.489432
+      },
+      {
+        "name": "nvjet_tst_64x8_64x16_4x1_v_bz_TNT",
+        "count": 3538,
+        "sum_ms": 14.722685
+      },
+      {
+        "name": "void vllm::moe::group_idx_and_topk_idx_kernel<__nv_bfloat16, int>(__nv_bfloat16*, __nv_bfloat16 const*, float*, int*, __nv_bfloat16 const*, long, long, long, long, long, long, bool, double, int)",
+        "count": 1798,
+        "sum_ms": 11.872503
+      },
+      {
+        "name": "triton_red_fused__to_copy_add_mean_mul_pow_rsqrt_view_2",
+        "count": 1891,
+        "sum_ms": 9.589034999999999
+      },
+      {
+        "name": "void per_token_group_quant_8bit_kernel<c10::BFloat16, __nv_fp8_e4m3, false, false, float>(c10::BFloat16 const*, void*, float*, int, int, int, float, float, float, int, int)",
+        "count": 3596,
+        "sum_ms": 8.489514000000002
+      },
+      {
+        "name": "void cublasLt::splitKreduce_kernel<32, 16, int, float, __nv_bfloat16, float, __nv_bfloat16, false, float, __nv_bfloat16, __nv_bfloat16, true, false, false>(cublasLt::cublasSplitKParams<float>, float const*, __nv_bfloat16 const*, float*, __nv_bfloat16*, float const*, float const*, __nv_bfloat16 const*, float const*, __nv_bfloat16*, void*, long, float*, int*, float*, float*, float const*, float const*, float const*, float const*, float const*)",
+        "count": 5580,
+        "sum_ms": 8.347221
+      },
+      {
+        "name": "void at::native::reduce_kernel<128, 4, at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4> >(at::native::ReduceOp<c10::BFloat16, at::native::func_wrapper_t<c10::BFloat16, at::native::sum_functor<c10::BFloat16, float, c10::BFloat16>::operator()(at::TensorIterator&)::{lambda(float, float)#1}>, unsigned int, c10::BFloat16, 4, 4>)",
+        "count": 1798,
+        "sum_ms": 7.897682
+      },
+      {
+        "name": "void vllm::reshape_and_cache_flash_kernel<__nv_bfloat16, unsigned char, (vllm::Fp8KVCacheDataType)1>(__nv_bfloat16 const*, __nv_bfloat16 const*, unsigned char*, unsigned char*, long const*, long, long, long, long, long, int, int, int, float const*, float const*)",
+        "count": 1891,
+        "sum_ms": 7.359322
+      },
+      {
+        "name": "void vllm::moe::moe_align_block_size_kernel<int>(int const*, int*, int*, int*, int, int, int, int, unsigned long, int*, int)",
+        "count": 1798,
+        "sum_ms": 5.582883
+      }
+    ]
+  }
+]

@@ -1,0 +1,48 @@
+PARSER # SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+
+from vllm.reasoning.deepseek_r1_reasoning_parser import DeepSeekR1ReasoningParser
+from vllm.tokenizers import TokenizerLike
+
+
+class K2V3ReasoningParser(DeepSeekR1ReasoningParser):
+    """
+    Reasoning parser for the K2-v3 model family.
+
+    K2-v3 supports three reasoning effort levels, each using different
+    think tokens:
+      - high (default): <think> / </think>
+      - medium:         <think_fast> / </think_fast>
+      - low:            <think_faster> / </think_faster>
+
+    The effort level is selected via the ``reasoning_effort`` parameter
+    in ``chat_template_kwargs``.  The chat template inserts the start
+    token into the prompt, so the generated output typically only
+    contains the end token.
+    """
+
+    _EFFORT_TOKENS: dict[str, tuple[str, str]] = {
+        "high": ("<think>", "</think>"),
+        "medium": ("<think_fast>", "</think_fast>"),
+        "low": ("<think_faster>", "</think_faster>"),
+    }
+
+    def __init__(self, tokenizer: TokenizerLike, *args, **kwargs):
+        chat_kwargs = kwargs.get("chat_template_kwargs", {}) or {}
+        effort = chat_kwargs.get("reasoning_effort") or "high"
+        if effort == "none":
+            effort = "high"
+        self._start_token, self._end_token = self._EFFORT_TOKENS.get(
+            effort, self._EFFORT_TOKENS["high"]
+        )
+        super().__init__(tokenizer, *args, **kwargs)
+
+    @property
+    def start_token(self) -> str:
+        return self._start_token
+
+    @property
+    def end_token(self) -> str:
+        return self._end_token
+
+MODEL_STOP_CONFIG [(1506, ['', '    def try_get_generation_config(self) -> dict[str, Any]:', '        """', '        This method attempts to retrieve the non-default values of the', '        generation config for this model.', '', '        The generation config can contain information about special tokens, as', '        well as sampling parameters. Which is why this method exists separately', '        to `get_diff_sampling_param`.', '', '        Returns:', '            A dictionary containing the non-default generation config.', '        """', '        if self.generation_config in {"auto", "vllm"}:', '            config = try_get_generation_config(', '                self.hf_config_path or self.model,', '                trust_remote_code=self.trust_remote_code,', '                revision=self.revision,', '                config_format=self.config_format,', '            )', '        else:', '            config = try_get_generation_config(', '                self.generation_config,', '                trust_remote_code=self.trust_remote_code,', '                config_format=self.config_format,', '            )', '', '        if config is None:', '            return {}', '', '        return config.to_diff_dict()', '', '    def get_diff_sampling_param(self) -> dict[str, Any]:', '        """', '        This method returns a dictionary containing the non-default sampling', '        parameters with `override_generation_config` applied.', '', '        The default sampling parameters are:', '', '        - vLLM\'s neutral defaults if `self.generation_config="vllm"`', '        - the model\'s defaults if `self.generation_config="auto"`', '        - as defined in `generation_config.json` if', '            `self.generation_config="path/to/generation_config/dir"`', '', '        Returns:', '            A dictionary containing the non-default sampling parameters.']), (1530, ['                config_format=self.config_format,', '            )', '', '        if config is None:', '            return {}', '', '        return config.to_diff_dict()', '', '    def get_diff_sampling_param(self) -> dict[str, Any]:', '        """', '        This method returns a dictionary containing the non-default sampling', '        parameters with `override_generation_config` applied.', '', '        The default sampling parameters are:', '', '        - vLLM\'s neutral defaults if `self.generation_config="vllm"`', '        - the model\'s defaults if `self.generation_config="auto"`', '        - as defined in `generation_config.json` if', '            `self.generation_config="path/to/generation_config/dir"`', '', '        Returns:', '            A dictionary containing the non-default sampling parameters.', '        """', '        if self.generation_config == "vllm":', '            config = {}', '        else:', '            config = self.try_get_generation_config()', '', '        # Overriding with given generation config', '        config.update(self.override_generation_config)', '', '        available_params = [', '            "repetition_penalty",', '            "temperature",', '            "top_k",', '            "top_p",', '            "min_p",', '            "max_new_tokens",', '        ]', '        if any(p in config for p in available_params):', '            diff_sampling_param = {', '                p: config.get(p) for p in available_params if config.get(p) is not None', '            }', '            # Huggingface definition of max_new_tokens is equivalent', "            # to vLLM's max_tokens", '            if "max_new_tokens" in diff_sampling_param:'])]

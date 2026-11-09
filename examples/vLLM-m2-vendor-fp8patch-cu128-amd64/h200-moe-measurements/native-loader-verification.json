@@ -1,0 +1,57 @@
+{
+  "filename": "E=24,N=1792,device_name=NVIDIA_H200,dtype=fp8_w8a8,block_shape=[128,128].json",
+  "loaded_contents": {
+    "1": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 1,
+      "num_stages": 5,
+      "num_warps": 4
+    },
+    "2": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 1,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    "4": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 1,
+      "num_stages": 5,
+      "num_warps": 8
+    },
+    "8": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 32,
+      "num_stages": 5,
+      "num_warps": 4
+    },
+    "triton_version": "3.5.0"
+  },
+  "production_mutation_count": 0,
+  "sha256": "82ba001d4da159284fc0ed788dcfa9f1a9b0afa8c577a1e390f71e2e1df052d5",
+  "shape": {
+    "K": 6144,
+    "N": 1792,
+    "block": [
+      128,
+      128
+    ],
+    "local_experts": 24,
+    "topk": 8
+  },
+  "sizes": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "validated_vendor_loader": true
+}

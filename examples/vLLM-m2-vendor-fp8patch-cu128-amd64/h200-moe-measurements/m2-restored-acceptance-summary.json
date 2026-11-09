@@ -1,0 +1,69 @@
+{
+  "worker": "j-7ec325bf-0033-4a97-a688-e8ac30334349-84fc97ff-fgvxs",
+  "deployment_generation": 13,
+  "deployment_ready": true,
+  "available_replicas": 1,
+  "main_restarts": 0,
+  "model_id": "M2",
+  "max_model_len": 262144,
+  "checkpoint": "unchanged /PVC and original digest/image; 79/79 loaded",
+  "native_config_selected": true,
+  "functional_http_status": {
+    "chat": 200,
+    "tool": 200
+  },
+  "chat_finish": "stop",
+  "chat_content": "\nM2 works\n",
+  "reasoning_is_separate": true,
+  "tool_finish": "tool_calls",
+  "tool_name": "get_weather",
+  "tool_arguments": "{\"location\": \"Abu Dhabi\"}",
+  "native_eos_default": 250019,
+  "direct_warm_direct_loopback": {
+    "warmups": 2,
+    "repetitions_single": 3,
+    "repetitions_8streams": 3,
+    "fixed_prompt_tokens": 26,
+    "completion_tokens_per_req": 256,
+    "single_median_tps": 57.439732302864265,
+    "eight_streams_agg_median_tps": 548.2038619118204,
+    "three_8stream_walls": [
+      3.7358365058898926,
+      3.7333734035491943,
+      3.7403831481933594
+    ],
+    "server_counter_delta_per_batch": [
+      2048.0,
+      2048.0,
+      2048.0
+    ]
+  },
+  "scope": "Local warm decode only. Historical external gateway numbers (48.4 single,445.1aggregate) are not identical-path A/B; no attribution as isolated2x speedup. Service remains healthy. Synthetic 8-16% expert-local improvements are not a general end-to-end guarantee. No new rollout needed.",
+  "evidence": [
+    "live-chat-tool-responses.json",
+    "direct-warm-throughput.json",
+    "restored-production-check-final.log",
+    "restored-model-info.json",
+    "native-loader-verification.json",
+    "evidence.json",
+    "finalist-ab.json"
+  ],
+  "local_measurements": [
+    {
+      "M": 1,
+      "speedup": 1.1057660756
+    },
+    {
+      "M": 2,
+      "speedup": 1.1562534862
+    },
+    {
+      "M": 4,
+      "speedup": 1.0864832968
+    },
+    {
+      "M": 8,
+      "speedup": 1.1107642917
+    }
+  ]
+}

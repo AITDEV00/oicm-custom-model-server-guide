@@ -1,0 +1,125 @@
+{
+  "models": {
+    "status": 200,
+    "data": {
+      "object": "list",
+      "data": [
+        {
+          "id": "M2",
+          "object": "model",
+          "created": 1794261326,
+          "owned_by": "vllm",
+          "root": "/pvc-home/app/download/base_model",
+          "parent": null,
+          "max_model_len": 262144,
+          "permission": [
+            {
+              "id": "modelperm-b0ab2003202f0b5e",
+              "object": "model_permission",
+              "created": 1794261326,
+              "allow_create_engine": false,
+              "allow_sampling": true,
+              "allow_logprobs": true,
+              "allow_search_indices": false,
+              "allow_view": true,
+              "allow_fine_tuning": false,
+              "organization": "*",
+              "group": null,
+              "is_blocking": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "chat": {
+    "status": 200,
+    "data": {
+      "id": "chatcmpl-aad846ee00d303dd",
+      "object": "chat.completion",
+      "created": 1794261326,
+      "model": "M2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "\nM2 works\n",
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [],
+            "reasoning": "User wants a reply only: \"M2 works\". Probably just that phrase.\n",
+            "reasoning_content": "User wants a reply only: \"M2 works\". Probably just that phrase.\n"
+          },
+          "logprobs": null,
+          "finish_reason": "stop",
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": null,
+      "usage": {
+        "prompt_tokens": 16,
+        "total_tokens": 40,
+        "completion_tokens": 24,
+        "prompt_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "kv_transfer_params": null
+    }
+  },
+  "tool": {
+    "status": 200,
+    "data": {
+      "id": "chatcmpl-98c3260da23dbd20",
+      "object": "chat.completion",
+      "created": 1794261327,
+      "model": "M2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [
+              {
+                "id": "chatcmpl-tool-8a3681eaba93ad5e",
+                "type": "function",
+                "function": {
+                  "name": "get_weather",
+                  "arguments": "{\"location\": \"Abu Dhabi\"}"
+                }
+              }
+            ],
+            "reasoning": "Okay, the user wants me to call the get_weather function for Abu Dhabi. Let me check the available tools. The get_weather function is listed, and it requires a location parameter. The user specified Abu Dhabi as the location. So I need to construct the function call with the location set to \"Abu Dhabi\". The function call should be in the format specified, which is a JSON object with the name and arguments. The arguments should be an object with the location key. So the final call would be {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Abu Dhabi\"}}. I need to make sure I don't add any extra text or explanation, just the function call as per the instructions.\n",
+            "reasoning_content": "Okay, the user wants me to call the get_weather function for Abu Dhabi. Let me check the available tools. The get_weather function is listed, and it requires a location parameter. The user specified Abu Dhabi as the location. So I need to construct the function call with the location set to \"Abu Dhabi\". The function call should be in the format specified, which is a JSON object with the name and arguments. The arguments should be an object with the location key. So the final call would be {\"name\": \"get_weather\", \"arguments\": {\"location\": \"Abu Dhabi\"}}. I need to make sure I don't add any extra text or explanation, just the function call as per the instructions.\n"
+          },
+          "logprobs": null,
+          "finish_reason": "tool_calls",
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": null,
+      "usage": {
+        "prompt_tokens": 160,
+        "total_tokens": 328,
+        "completion_tokens": 168,
+        "prompt_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "kv_transfer_params": null
+    }
+  },
+  "chat_eos_native_no_stop_override": true
+}

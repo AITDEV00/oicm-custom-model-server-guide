@@ -1,0 +1,23 @@
+# Generated Python/cache and large local boot/test logs.
+__pycache__/
+*.py[cod]
+*.trace.json
+*.pt.trace.json.gz
+src/
+venv/
+.env
+
+# Local unfinished or unsafe rejected experiments (documented in reports).
+/m2_stream_trace.py
+/m2_trace_gate.c
+/m2_moe_worker.py
+/m2_moe_tune.py
+
+# Large unbounded local pod-watch buffers; guarded compact results retained.
+*-watch.jsonl
+# Temporary interpolation typo; not application code.
+__pycache__/
+
+# Keep compact evidence reports, measured JSON, patch artifacts, and
+# expected metadata. Do not commit verbatim environment secrets or m2 model
+# license files, raw giant profile captures, downloaded weights, or kubeconfigs.

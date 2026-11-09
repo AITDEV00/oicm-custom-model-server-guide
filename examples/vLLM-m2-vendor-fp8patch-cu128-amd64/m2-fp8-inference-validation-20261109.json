@@ -1,0 +1,14 @@
+{
+  "models": {
+    "exit_code": 1,
+    "text": "error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec \"c509fc9a4d3444965947b8891f49fc6ba39ff029e447178b3ab06279c3dbacf9\": OCI runtime exec failed: exec failed: unable to start container process: exec: \"curl\": executable file not found in $PATH: unknown\ncommand terminated with exit code 1\n"
+  },
+  "chat": {
+    "exit_code": 1,
+    "text": "error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec \"823fd8eacb7ea802720040fb6ad001a52b64fa5ace5b6ab4b8792427cbfabbc8\": OCI runtime exec failed: exec failed: unable to start container process: exec: \"curl\": executable file not found in $PATH: unknown\ncommand terminated with exit code 1\n"
+  },
+  "tools": {
+    "exit_code": 1,
+    "text": "error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec \"6f3cd8ab04f61b017cf6bd8cb4c47a7821b34856107ba9e3bab8f2adede118b7\": OCI runtime exec failed: exec failed: unable to start container process: exec: \"curl\": executable file not found in $PATH: unknown\ncommand terminated with exit code 1\n"
+  }
+}

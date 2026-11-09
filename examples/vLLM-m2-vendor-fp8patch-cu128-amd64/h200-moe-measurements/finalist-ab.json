@@ -1,0 +1,1122 @@
+{
+  "1": {
+    "candidate": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 1,
+      "num_stages": 5,
+      "num_warps": 4
+    },
+    "candidate_median_us": 95.4925749450922,
+    "default_median_us": 105.5924498476088,
+    "numerical_pass": true,
+    "rounds": [
+      {
+        "M": 1,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 5,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.6714447699487209,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.040771484375,
+          "mean_abs_diff": 5.309712651069276e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 95.4925749450922,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 1,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.1018697507679462,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.040771484375,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 105.77752441167831,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 1,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 5,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.9877942427992821,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.040771484375,
+          "mean_abs_diff": 5.309712651069276e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 95.82672482356429,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 1,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.6967644914984703,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.040771484375,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 105.2512751892209,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 1,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 5,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.6684398539364338,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.040771484375,
+          "mean_abs_diff": 5.309712651069276e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 95.41950006969273,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 1,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.0309415645897388,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.040771484375,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 105.5924498476088,
+        "triton_version": "3.5.0"
+      }
+    ],
+    "speedup_local_expert": 1.105766075617125
+  },
+  "2": {
+    "candidate": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 1,
+      "num_stages": 3,
+      "num_warps": 4
+    },
+    "candidate_median_us": 141.03525085374713,
+    "default_median_us": 163.0725004710257,
+    "numerical_pass": true,
+    "rounds": [
+      {
+        "M": 2,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.7326592244207859,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 4.528270073933527e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 140.5129998922348,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 2,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.0734752491116524,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 163.3557751774788,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 2,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.2188725210726261,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 4.528270073933527e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 141.11157469451427,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 2,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.7568330056965351,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 163.02729984745383,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 2,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.14516856148839,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 4.528270073933527e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 141.03525085374713,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 2,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.753643061965704,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 163.0725004710257,
+        "triton_version": "3.5.0"
+      }
+    ],
+    "speedup_local_expert": 1.156253486159507
+  },
+  "4": {
+    "candidate": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 1,
+      "num_stages": 5,
+      "num_warps": 8
+    },
+    "candidate_median_us": 197.41702489554882,
+    "default_median_us": 214.49030004441738,
+    "numerical_pass": true,
+    "rounds": [
+      {
+        "M": 4,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 5,
+          "num_warps": 8
+        },
+        "elapsed_s": 1.0878203622996807,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 3.850360735668801e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 197.41702489554882,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 4,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.8285150788724422,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 214.49030004441738,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 4,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 5,
+          "num_warps": 8
+        },
+        "elapsed_s": 0.8889284953474998,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 3.850360735668801e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 197.00092477723956,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 4,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.8286084048449993,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 214.531924482435,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 4,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 1,
+          "num_stages": 5,
+          "num_warps": 8
+        },
+        "elapsed_s": 1.0988167375326157,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.00030517578125,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 3.850360735668801e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 197.63784995302558,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 4,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.8328928388655186,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 214.448999799788,
+        "triton_version": "3.5.0"
+      }
+    ],
+    "speedup_local_expert": 1.08648329675671
+  },
+  "8": {
+    "candidate": {
+      "BLOCK_SIZE_K": 128,
+      "BLOCK_SIZE_M": 16,
+      "BLOCK_SIZE_N": 128,
+      "GROUP_SIZE_M": 32,
+      "num_stages": 5,
+      "num_warps": 4
+    },
+    "candidate_median_us": 221.02880105376244,
+    "default_median_us": 245.51089964807034,
+    "numerical_pass": true,
+    "rounds": [
+      {
+        "M": 8,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 5,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.8438698276877403,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0003662109375,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 3.908089274773374e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 220.7521004602313,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 8,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.2563047781586647,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 0,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 245.92092465609312,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 8,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 5,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.1198512353003025,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0003662109375,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 3.908089274773374e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 221.02880105376244,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 8,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 0.882703572511673,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 1,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 245.25797422975302,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 8,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 16,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 5,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.249006487429142,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "candidate",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0003662109375,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 3.908089274773374e-05,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 221.24742530286312,
+        "triton_version": "3.5.0"
+      },
+      {
+        "M": 8,
+        "benchmark_sha256": "01c06be4a33d0cff4790410249a01d38ebc5cc81a733de2e9f7fc2af1f70f76c",
+        "config": {
+          "BLOCK_SIZE_K": 128,
+          "BLOCK_SIZE_M": 64,
+          "BLOCK_SIZE_N": 128,
+          "GROUP_SIZE_M": 32,
+          "num_stages": 3,
+          "num_warps": 4
+        },
+        "elapsed_s": 1.230129811912775,
+        "gpu": "NVIDIA H200",
+        "iterations": 128,
+        "label": "default",
+        "numeric_pass": true,
+        "numeric_reference": {
+          "atol": 0.008,
+          "finite": true,
+          "max_abs_diff": 0.0,
+          "max_reference_abs": 0.056640625,
+          "mean_abs_diff": 0.0,
+          "note": "synthetic kernel sanity only, not full-model quality proof",
+          "passed": true,
+          "rtol": 0.001,
+          "seed": 91
+        },
+        "round": 2,
+        "schema": "m2.moe.trial.v1",
+        "scope": "synthetic local-expert w13+w2 only, not end-to-end speed",
+        "seed": 0,
+        "source_shape": {
+          "K": 6144,
+          "N": 1792,
+          "block": [
+            128,
+            128
+          ],
+          "local_experts": 24,
+          "topk": 8
+        },
+        "time_us": 245.51089964807034,
+        "triton_version": "3.5.0"
+      }
+    ],
+    "speedup_local_expert": 1.1107642917013016
+  }
+}

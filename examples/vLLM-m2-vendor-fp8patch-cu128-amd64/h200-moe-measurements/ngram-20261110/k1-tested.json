@@ -1,0 +1,7 @@
+{
+  "deployment_uid": "cbe870c3-263f-4460-a6ae-05b9d4fb9b76",
+  "pod_uid": "4c2aef88-10b1-45da-998b-03c195cf72d0",
+  "ngram_k": 1,
+  "generation": 18,
+  "measurement": "k1-observed.json"
+}

@@ -1,0 +1,297 @@
+# M2 FP8 / Xllm boot failure evidence (2026-11-09 UTC)
+
+This file distinguishes actual failures verified on 8x H200 from incomplete
+only-test adapter overlays. CURRENT STATUS: generation11 READY AND INFERENCE
+VALIDATED. Original failure material below is retained for root-cause analysis;
+it is not a claim that the final repaired Deployment is still failing.
+
+## Vendor runtime
+harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/m2-vllm@sha256:d3ced94ef036e8469bbbb85b8973a31c9b48bf441b565db3b3197cef36309ba9
+LLM360/vllm 0.12.0-ifm, version 0.1.dev11870+gce42a74a8.d20260422;
+/opt/vllm/vllm/model_executor/models/xllm.py
+Namespace/deployment: adeo / j-7ec325bf-0033-4a97-a688-e8ac30334349
+
+## Problem classification and confirmed root cause
+The failure was FP8 CONFIGURATION / WEIGHT CONSTRUCTION, not FP8 KV cache.
+compressed-tensors checkpoint uses static 128x128 block weights and dynamic
+group128 activations. FP8 KV E4M3 cache was separately accepted before load.
+Logs show TP8 / EP8 with 24 local experts from192; rank4 local range96-119
+and rank7 local range168-191.
+
+Original vendor error from actual worker:
+KeyError: 'layers.32.mlp.experts.w2_weight_scale'
+Original crash stack:
+XllmModel.load_weights -> AutoWeightsLoader -> child_module lazy weights;
+params_dict -> name_mapped dict -> cannot find fused scale name.
+Final live instrumentation measured qm=UnquantizedFusedMoEMethod, qc=NoneType,
+BF16 w13_weight and w2_weight, and NO FP8 scale parameter slots. The
+original error did not mean the sparse source scale was absent.
+
+The partial hf_overrides replaced the complete quantization_config object with
+only config_groups. This omitted quant_method, ignore, format, and status.
+ModelConfig._verify_quantization then selected quantization=None with
+TAGS quant_method=''. Restoring the COMPLETE original metadata, after removing
+only the rejected null scale_dtype/zp_dtype fields in the weights/input
+groups, restored ModelConfig.quantization='compressed-tensors'. This retains
+all 486 original ignore entries rather than quantizing shared experts/attention.
+
+Checkpoint sparse per-expert projection scales are present, e.g.
+model.layers.32.mlp.experts.0.down_proj.weight_scale. The 79 shards byte total
+and all map references were verified read-only. No model tensor rewrite or
+cryptographic verification was performed (verified:none).
+
+## Attempted source-local compatibility overlay
+Single configMap file m2-xllm-fp8-expert-compat-r1 at exact above vendor adapter
+path, source sha256 2b9390264b8593960c6b6f6f457f3de37642731a41364af819be7c5fb8470d02.
+Synthetic FusedMoE callback tests showed gate/up/down route to correct NAMES
+and local values. No assertion of full distributed weight loader tested there.
+Attempted parse of per-expert suffix and fused mapping param_name chain mapped
+w=2 down,w1=gate,w3=up across outgoing_values. Correction test incomplete on
+real global/local EP workload. Do NOT treat this proposed patch as fix or apply
+without reproducing same test evidence documented here.
+
+## Latest REAL failure following overlay
+This is the exact original FP8 worker error, with gate/readiness chatter omitted:
+
+```
+(Worker_TP5_EP5 pid=37) ERROR 11-09 16:37:16 [multiproc_executor.py:750] WorkerProc failed to start.
+  worker_main -> WorkerProc.__init__ -> self.worker.load_model()
+  vllm/v1/worker/gpu_worker.py:273
+  vllm/v1/worker/gpu_model_runner.py:3484 in load_model
+  model_loader/base_loader.py:55 -> self.load_weights(model, model_config)
+  default_loader.py:305 -> loaded_weights = model.load_weights(...)
+  online_quantization.py:173 -> patched_model_load_weights
+  model_executor/models/utils.py:335 autoloaded_weights = set(self._load_module(...))
+  model_executor/models/utils.py:261 loaded_params=module_load_weights(weights)
+  /opt/vllm/vllm/model_executor/models/xllm.py:777 in load_weights
+    param = params_dict[name_mapped]
+KeyError: 'layers.32.mlp.experts.w2_weight_scale'
+```
+
+After the attempted sparse projection compatibility mapping, actual full-runtime
+failure (previous main of Pod j-7ec325bf-0033-4a97-a688-e8ac30334349-8564996c4c-c2cl2,
+exit at 2026-11-09T17:07:43Z) is:
+
+```
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750] WorkerProc failed to start.
+  worker_main -> WorkerProc.__init__ -> self.worker.load_model()
+  vllm/v1/worker/gpu_worker.py:273
+  vllm/v1/worker/gpu_model_runner.py:3484 in load_model
+  model_loader/base_loader.py:55 -> self.load_weights(model, model_config)
+  default_loader.py:305 -> loaded_weights = model.load_weights(...)
+  /opt/vllm/vllm/model_executor/models/xllm.py:990 return loader.load_weights(weights)
+  online_quantization.py:173 patched_model_load_weights -> original_load_weights(...)
+  /opt/vllm/vllm/model_executor/models/utils.py:335 autoloaded_weights = set(self._load_module(...))
+  /opt/vllm/vllm/model_executor/models/utils.py:261 loaded_params = module_load_weights(weights)
+  /opt/vllm/vllm/model_executor/models/xllm.py:755 in routed sparse tensor handler
+  success = loader(param, loaded_weight, param_name,
+                   shard_id=shard_id, expert_id=int(expert_txt),
+                   return_success=True)
+  callback returned false => runtime guard rejects input
+RuntimeError: FusedMoE rejected sparse expert tensor: layers.32.mlp.experts.100.down_proj.weight
+```
+
+The failure occurs early during shard loading; traces were preserved during
+follow-up before log expiry.
+
+Confirmed callback contract, disproving the earlier speculative renumbering:
+FusedMoE.make_expert_params_mapping enumerates GLOBAL experts 0..191.
+FusedMoE.weight_loader maps a global ID to a local slot; when unowned it
+returns False with return_success=True. AutoWeightsLoader then proceeds through
+expert callbacks and skips the tensor because it is marked is_expert_weight.
+Global expert100 belongs global rank4/local slot4; False on rank7 is the normal
+remote-expert off-ramp, not failure or an instruction to renumber. No offset,
+dummy/local-renumbering or fused-name rewrite is justified.
+
+## Stock vendor validation and minimal repair
+A regression using actual CompressedTensorsW8A8Fp8MoEMethod.create_weights,
+24 local FP8 experts, a 192-entry global expert_map, and gate/up/down values
+plus block scales passed with the UNMODIFIED vendor XllmModel for ranks3/4/7.
+Remote ranks remained untouched; rank4 received correct values and w13/w2
+scales at local slot4. Marker: REAL_COMPRESSED_TENSORS_FACTORY_AND_EXPERT_
+LOCALITY_PASS, recorded in m2-fp8-stock-vendor-check-20261109.txt.
+
+The attempted source overlay is therefore NOT necessary. Do not ship r1 or r3.
+The correct repair is full sanitized checkpoint metadata and NO adapter mount.
+Original vendor XllmModel remains hash30c1b7bcf19365c4db9e826da4f11d1da
+5f11fa39057fedbc3ac454a2ab1a9af.
+
+Generation10 applied the FP8 repair and completed 79/79 shards, compilation,
+CUDA graphs and service startup. Its stock-adapter hash was independently
+reconfirmed at the final deployment: 30c1b7bcf19365c4db9e826da4f11d1da5f11fa3
+9057fedbc3ac454a2ab1a9af. Full quantization metadata with 486 ignores remained.
+
+A separate finalization issue was then observed: chat content null/tool_calls
+empty despite real generated text. The model chat template closes turns with
+<|im_end|>=250019, whereas config.json and generation_config.json declare only
+<|endoftext|>=1 EOS. An explicit request stop_token_ids:[250019] proved the
+stop condition in generation10. Generation11 adds only
+--override-generation-config {"eos_token_id":250019}, with all other exact
+quant/PVC/runtime arguments unchanged; no checkpoint file was modified.
+
+Final worker j-...-c76f57d85-5zxft is Ready with zero restarts and Ready/available
+1, again loaded 79/79 and initialized the exact vendor FP8 runtime. Acceptance
+WITHOUT client stop override: /v1/models exact M2 + 262144, ordinary chat HTTP200
+finish=stop/content 'M2 works', tool required schema got parsed get_weather with
+{"location":"Abu Dhabi"} finish=tool_calls (25 output tokens). Required client
+tool generation needed its low-reasoning chat mode; direct non-tool default uses
+high reasoning. 220 tokens is insufficient for this natural high-reasoning short
+reply; 236 completed with final content. Preserve raw evidence m2-fp8-default-eos-
+validation-20261109.json and m2-fp8-final-deployment-20261109.json. Long-context,
+concurrency, production-quality/load metrics are separate and NOT yet measured.
+
+## Reproducibility material
+Adjacent m2-fp8-adapter-attempt.diff is the source-local ATTEMPT ONLY, not
+production fix. m2-fp8-original-full-capture-20261109.txt and
+m2-fp8-after-overlay-full-capture-20261109.txt capture target failures and
+follow-on diagnostic cases. m2-fp8-original-sparse-partial-20261109.log saved
+an original failure before source overlay. The referred
+m2-fp8-current-pod.json was NOT exported; do not infer it exists.
+The exact stock FP8 factory regression is m2-fp8-stock-vendor-regression.py.
+No license payload/credential or source secrets are in this report.
+
+SOURCE_PATCH_NOT_VALIDATED_OR_NEEDED. CONFIGURATION_REPAIR_STOCK_FP8_AND_INFERENCE_VALIDATED.
+See FINAL-STATUS.md for the precise generation11 evidence and remaining benchmarks.
+
+# VERBATIM ORIGINAL WORKER TRACE
+.py", line 60, in cmd
+(APIServer pid=7)     uvloop.run(run_server(args))
+(APIServer pid=7)   File "/opt/eval_xllm/lib/python3.12/site-packages/uvloop/__init__.py", line 96, in run
+(APIServer pid=7)     return __asyncio.run(
+(APIServer pid=7)            ^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/usr/lib/python3.12/asyncio/runners.py", line 194, in run
+(APIServer pid=7)     return runner.run(main)
+(APIServer pid=7)            ^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/usr/lib/python3.12/asyncio/runners.py", line 118, in run
+(APIServer pid=7)     return self._loop.run_until_complete(task)
+(APIServer pid=7)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "uvloop/loop.pyx", line 1518, in uvloop.loop.Loop.run_until_complete
+(APIServer pid=7)   File "/opt/eval_xllm/lib/python3.12/site-packages/uvloop/__init__.py", line 48, in wrapper
+(APIServer pid=7)     return await main
+(APIServer pid=7)            ^^^^^^^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/entrypoints/openai/api_server.py", line 1819, in run_server
+(APIServer pid=7)     await run_server_worker(listen_address, sock, args, **uvicorn_kwargs)
+(APIServer pid=7)   File "/opt/vllm/vllm/entrypoints/openai/api_server.py", line 1838, in run_server_worker
+(APIServer pid=7)     async with build_async_engine_client(
+(APIServer pid=7)   File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+(APIServer pid=7)     return await anext(self.gen)
+(APIServer pid=7)            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/entrypoints/openai/api_server.py", line 183, in build_async_engine_client
+(APIServer pid=7)     async with build_async_engine_client_from_engine_args(
+(APIServer pid=7)   File "/usr/lib/python3.12/contextlib.py", line 210, in __aenter__
+(APIServer pid=7)     return await anext(self.gen)
+(APIServer pid=7)            ^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/entrypoints/openai/api_server.py", line 224, in build_async_engine_client_from_engine_args
+(APIServer pid=7)     async_llm = AsyncLLM.from_vllm_config(
+(APIServer pid=7)                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/async_llm.py", line 223, in from_vllm_config
+(APIServer pid=7)     return cls(
+(APIServer pid=7)            ^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/async_llm.py", line 134, in __init__
+(APIServer pid=7)     self.engine_core = EngineCoreClient.make_async_mp_client(
+(APIServer pid=7)                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/core_client.py", line 121, in make_async_mp_client
+(APIServer pid=7)     return AsyncMPClient(*client_args)
+(APIServer pid=7)            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/core_client.py", line 810, in __init__
+(APIServer pid=7)     super().__init__(
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/core_client.py", line 471, in __init__
+(APIServer pid=7)     with launch_core_engines(vllm_config, executor_class, log_stats) as (
+(APIServer pid=7)   File "/usr/lib/python3.12/contextlib.py", line 144, in __exit__
+(APIServer pid=7)     next(self.gen)
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/utils.py", line 903, in launch_core_engines
+(APIServer pid=7)     wait_for_engine_startup(
+(APIServer pid=7)   File "/opt/vllm/vllm/v1/engine/utils.py", line 960, in wait_for_engine_startup
+(APIServer pid=7)     raise RuntimeError(
+(APIServer pid=7) RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}
+Error handling request from 10.10.125.41
+Traceback (most recent call last):
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/connector.py", line 1310, in _wrap_create_connection
+    sock = await aiohappyeyeballs.start_connection(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 122, in start_connection
+    raise first_exception
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 73, in start_connection
+    sock = await _connect_sock(
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohappyeyeballs/impl.py", line 208, in _connect_sock
+    await loop.sock_connect(sock, address)
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 651, in sock_connect
+    return await fut
+           ^^^^^^^^^
+  File "/usr/lib/python3.12/asyncio/selector_events.py", line 691, in _sock_connect_cb
+    raise OSError(err, f'Connect call failed {address}')
+ConnectionRefusedError: [Errno 111] Connect call failed ('127.0.0.1', 18000)
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/web_protocol.py", line 517, in _handle_request
+    resp = await request_handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/web_app.py", line 569, in _handle
+    return await handler(request)
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/license/license_gate.py", line 114, in handler
+    upstream = await session.request(
+               ^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/client.py", line 788, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/client.py", line 742, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/connector.py", line 1251, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/connector.py", line 1623, in _create_direct_connection
+    raise last_exc
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/connector.py", line 1592, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/eval_xllm/lib/python3.12/site-packages/aiohttp/connector.py", line 1333, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host 127.0.0.1:18000 ssl:default [Connect call failed ('127.0.0.1', 18000)]
+/usr/lib/python3.12/multiprocessing/resource_tracker.py:254: UserWarning: resource_tracker: There appear to be 1 leaked shared_memory objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
+
+# VERBATIM PATCHED BOOT WORKER TRACE
+Loading safetensors checkpoint shards:   0% Completed | 0/79 [00:00<?, ?it/s]
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750] WorkerProc failed to start.
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750] Traceback (most recent call last):
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/v1/executor/multiproc_executor.py", line 722, in worker_main
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     worker = WorkerProc(*args, **kwargs)
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/v1/executor/multiproc_executor.py", line 562, in __init__
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     self.worker.load_model()
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/v1/worker/gpu_worker.py", line 273, in load_model
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     self.model_runner.load_model(eep_scale_up=eep_scale_up)
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/v1/worker/gpu_model_runner.py", line 3484, in load_model
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     self.model = model_loader.load_model(
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]                  ^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/model_loader/base_loader.py", line 55, in load_model
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     self.load_weights(model, model_config)
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/model_loader/default_loader.py", line 305, in load_weights
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     loaded_weights = model.load_weights(self.get_all_weights(model_config, model))
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/models/xllm.py", line 990, in load_weights
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     return loader.load_weights(weights)
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/model_loader/online_quantization.py", line 173, in patched_model_load_weights
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     return original_load_weights(auto_weight_loader, weights, mapper=mapper)
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/models/utils.py", line 335, in load_weights
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     autoloaded_weights = set(self._load_module("", self.module, weights))
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/models/utils.py", line 288, in _load_module
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     yield from self._load_module(
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/models/utils.py", line 261, in _load_module
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     loaded_params = module_load_weights(weights)
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]   File "/opt/vllm/vllm/model_executor/models/xllm.py", line 755, in load_weights
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750]     raise RuntimeError(
+(Worker_TP7_EP7 pid=39) ERROR 11-09 17:07:37 [multiproc_executor.py:750] RuntimeError: FusedMoE rejected sparse expert tensor: layers.32.mlp.experts.100.down_proj.weight
+(Worker_TP7_EP7 pid=39) INFO 11-09 17:07:37 [multiproc_executor.py:709] Parent process exited, terminating worker

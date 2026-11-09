@@ -1,0 +1,53 @@
+--- a/opt/vllm/vllm/model_executor/models/xllm.py
++++ b/opt/vllm/vllm/model_executor/models/xllm.py
+@@ -727,6 +727,47 @@ class XllmModel(nn.Module):
+         expert_params_mapping = self.get_expert_mapping()
+         for name, loaded_weight in weights:
++            # Standard mapping expects fused expert tensor names but compressed
++            # tensors stores gate/up/down projections individually per expert.
++            # Join these sparse tensors into the registered w13/w2 fused slots
++            # through the standard FusedMoE callback. Values are not changed.
++            if ".mlp.experts." in name:
++                expert_tail = name.split(".mlp.experts.", 1)[1]
++                expert_txt, projection, parameter = expert_tail.split(".", 2)
++                if expert_txt.isdecimal() and projection in (
++                    "gate_proj", "up_proj", "down_proj",
++                ):
++                    if parameter not in (
++                        "weight", "weight_scale", "input_scale",
++                    ):
++                        raise ValueError(
++                            "Unsupported sparse Xllm expert parameter: " + name
++                        )
++                    fused_prefix = (
++                        name.split(".mlp.experts.", 1)[0] + ".mlp.experts."
++                    )
++                    shard_id = {
++                        "gate_proj": "w1",  # w13 first half (gate)
++                        "up_proj": "w3",   # w13 second half (up)
++                        "down_proj": "w2",
++                    }[projection]
++                    param_name = fused_prefix + (
++                        "w2_" if shard_id == "w2" else "w13_"
++                    ) + parameter
++                    if is_pp_missing_parameter(param_name, self):
++                        continue
++                    param = params_dict[param_name]
++                    loader = typing.cast(Callable[..., bool],
++                                        param.weight_loader)
++                    # Physical expert IDs stay attached in the param name so
++                    # FusedMoE performs its own global->local expert mapping.
++                    success = loader(param, loaded_weight, param_name,
++                                     shard_id=shard_id,
++                                     expert_id=int(expert_txt),
++                                     return_success=True)
++                    if not success:
++                        raise RuntimeError(
++                            "FusedMoE rejected sparse expert tensor: " + name
++                        )
++                    loaded_params.add(param_name)
++                    continue
++
+             for param_name, weight_name, shard_id in stacked_params_mapping:
+                 # Skip non-stacked layers and experts (experts handled below).
+                 if weight_name not in name:

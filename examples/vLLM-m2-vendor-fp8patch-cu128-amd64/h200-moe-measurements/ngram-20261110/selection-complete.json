@@ -1,0 +1,22 @@
+{
+  "date": "2026-11-10",
+  "decision": "Retain faster measured n-gram; do NOT restore no-spec",
+  "requested_final": "TP8+EP8+ngram k1 lookup_min=3 lookup_max=5",
+  "current_deployment_generation": 20,
+  "expected_final_pod": "j-7ec325bf-0033-4a97-a688-e8ac30334349-7474765585-49hfp",
+  "expected_final_pod_uid": "d0ec3b52-0eeb-4e27-8206-cb221928e29b",
+  "previous_k1_measured_pod_uid": "4c2aef88-10b1-45da-998b-03c195cf72d0",
+  "final_confirmation_capture": "k1-retained-final.json",
+  "capture_complete": true,
+  "all_checks_passed": true,
+  "eos_native_no_stop_override": true,
+  "tool_calls_correct": true,
+  "final_worker_ready_and_restarts_zero": true,
+  "final_retained_fixed_single_median_tps": 75.76913820314341,
+  "final_retained_repeat_single_median_tps": 82.17262086314517,
+  "final_retained_2_stream_aggregate_tps": 157.1809891320801,
+  "final_retained_8_stream_aggregate_tps": 554.2813693960234,
+  "no_spec_rollback_executed_after_user_rescinded": false,
+  "still_do_not_claim_final_ready_until_positive_measurement_generated_and_engine_verified": false,
+  "no_profile": true
+}

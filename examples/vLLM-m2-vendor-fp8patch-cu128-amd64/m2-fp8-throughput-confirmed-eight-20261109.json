@@ -1,0 +1,26 @@
+{
+  "date_utc": "2026-11-09",
+  "deployment_id": "7ec325bf-0033-4a97-a688-e8ac30334349",
+  "model": "M2",
+  "workers": 8,
+  "max_tokens": 256,
+  "generated_tokens_external_usage_sum": 2048,
+  "burst_wall_seconds": 4.601118519996817,
+  "burst_aggregate_tokens_per_second": 445.1091601094894,
+  "per_request_elapsed_seconds_range": [4.5062, 4.5984],
+  "per_request_tokens_per_second_mean": 56.38,
+  "engine_generation_tokens_counter_before": 8633.0,
+  "engine_generation_tokens_counter_after": 10681.0,
+  "engine_generation_tokens_counter_delta": 2048.0,
+  "logger_after_window_boundary_utc": "18:33:05",
+  "logger_reported_aggregate_generation_tokens_per_second": 204.8,
+  "logger_window_seconds": 10,
+  "logger_reported_running_requests": 0,
+  "explanation": "Measured requests completed while engine logger exported a span with just-completed (now running=0) requests. The batch is shorter than 10 seconds and average logs are window-normalized with idle time. Client exact burst rate is more meaningful for this small burst.",
+  "notes": [
+    "Temperature 0, identical short 26-token MoE parallelism prompt, warm engine persistent M2 and native chat-template.",
+    "Primary external HTTP gateway request timed client-side; all completion_tokens came from server usage.",
+    "No credentials stored in this file.",
+    "Small warm cache microbenchmark; not a cold-cache, long-context or saturation guarantee."
+  ]
+}

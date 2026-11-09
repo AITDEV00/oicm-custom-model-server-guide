@@ -1,0 +1,88 @@
+{
+  "configuration": "original TP8+EP8 tuned, NO profiler, NO speculative decoding, generation17",
+  "date": "2026-11-10",
+  "model": "M2",
+  "direct_loopback": true,
+  "temperature": 0,
+  "max_completion_tokens": 256,
+  "prompt": "Write three concise bullet points explaining how expert parallelism improves mixture-of-experts inference.",
+  "warmup_count": 2,
+  "single": [
+    {
+      "elapsed_s": 4.395424898713827,
+      "completion_tokens": 256,
+      "prompt_tokens": 26,
+      "finish": "length",
+      "tps": 58.24237835912286,
+      "reasoning_chars": 1093
+    },
+    {
+      "elapsed_s": 4.395673271268606,
+      "completion_tokens": 256,
+      "prompt_tokens": 26,
+      "finish": "length",
+      "tps": 58.239087439298586,
+      "reasoning_chars": 1093
+    },
+    {
+      "elapsed_s": 4.372126653790474,
+      "completion_tokens": 256,
+      "prompt_tokens": 26,
+      "finish": "length",
+      "tps": 58.552741096385525,
+      "reasoning_chars": 1093
+    }
+  ],
+  "single_median_tps": 58.24237835912286,
+  "bursts": [
+    {
+      "wall_s": 3.7491669096052647,
+      "total_tokens": 2048,
+      "aggregate_tokens_per_second": 546.2546878756128,
+      "engine_generation_counter_delta": 2048.0,
+      "per_stream_tps": [
+        68.70149027363742,
+        68.70509902604212,
+        68.45080949914177,
+        68.41803378934556,
+        68.46345245233212,
+        68.45545718110027,
+        68.5196079175281,
+        68.4955031532482
+      ]
+    },
+    {
+      "wall_s": 3.7415301986038685,
+      "total_tokens": 2048,
+      "aggregate_tokens_per_second": 547.3696298814319,
+      "engine_generation_counter_delta": 2048.0,
+      "per_stream_tps": [
+        68.78891618896937,
+        68.81347277439006,
+        68.48252869333669,
+        68.54823433535981,
+        68.51971777677947,
+        68.58495489132571,
+        68.55246401318382,
+        68.58192423376784
+      ]
+    },
+    {
+      "wall_s": 3.7354437187314034,
+      "total_tokens": 2048,
+      "aggregate_tokens_per_second": 548.2615063185914,
+      "engine_generation_counter_delta": 2048.0,
+      "per_stream_tps": [
+        68.89658843803518,
+        68.62563481754565,
+        68.93471829359576,
+        68.61609095051432,
+        68.66646224449244,
+        68.71920536385802,
+        68.71413345626831,
+        68.71234274572677
+      ]
+    }
+  ],
+  "burst_median_tps": 547.3696298814319
+}

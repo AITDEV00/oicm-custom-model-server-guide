@@ -1,0 +1,151 @@
+Name:                j-7ec325bf-0033-4a97-a688-e8ac30334349-5844cbd5f7-qrnsj
+Namespace:           adeo
+Priority:            0
+Runtime Class Name:  nvidia
+Service Account:     default
+Node:                prd-infr-k8h200/10.10.125.41
+Start Time:          Mon, 09 Nov 2026 17:47:38 +0000
+Labels:              io.kompose.service=j-7ec325bf-0033-4a97-a688-e8ac30334349
+                     oip/author=bb51bd5d-39dd-47d3-8e3c-79b992d92056
+                     oip/author-username=jyaoecouncil.ae
+                     oip/displayable=true
+                     oip/tenant-id=adeo
+                     oip/workload-id=7ec325bf-0033-4a97-a688-e8ac30334349
+                     oip/workload-type=model_deployment
+                     oip/workspace-id=d7bbdde9-c8e2-4c43-8b63-4fc1f0545686
+                     pod-template-hash=5844cbd5f7
+Annotations:         cni.projectcalico.org/containerID: bb9ebeadbb1a7e5356bcee8735ddbe90f32e974a1a6cf00d128e31460f664955
+                     cni.projectcalico.org/podIP: 10.42.6.100/32
+                     cni.projectcalico.org/podIPs: 10.42.6.100/32
+                     scheduling.k8s.io/group-name: podgroup-17cae6b3-0960-4f7d-829a-c814b7210941
+                     scheduling.volcano.sh/queue-name: adeo-d7bbdde9-c8e2-4c43-8b63-4fc1f0545686
+Status:              Running
+IP:                  10.42.6.100
+IPs:
+  IP:           10.42.6.100
+Controlled By:  ReplicaSet/j-7ec325bf-0033-4a97-a688-e8ac30334349-5844cbd5f7
+Init Containers:
+  init-model-downloader:
+    Container ID:   containerd://7a26afe9f18a7a5275497b1b986f39f794cf5c560b489b32cae76cd58c54ef00
+    Image:          registry.gitlab.com/openinnovationai/platform/mlops/mlops-serving/init-image:release-1.7.1
+    Image ID:       registry.gitlab.com/openinnovationai/platform/mlops/mlops-serving/init-image@sha256:a70e9f56e2e000c87c9c13609de08886b77bc8b7478fd3d54533522d4531842d
+    Port:           <none>
+    Host Port:      <none>
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Mon, 09 Nov 2026 17:47:39 +0000
+      Finished:     Mon, 09 Nov 2026 17:47:40 +0000
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     2
+      memory:  12Gi
+    Requests:
+      cpu:     1
+      memory:  12Gi
+    Environment Variables from:
+      configmap-7ec325bf-0033-4a97-a688-e8ac30334349-main  ConfigMap  Optional: false
+      secrets-7ec325bf-0033-4a97-a688-e8ac30334349-main    Secret     Optional: false
+    Environment:                                           <none>
+    Mounts:
+      /pvc-home from pvc-7ec325bf-0033-4a97-a688-e8ac30334349 (rw)
+Containers:
+  main:
+    Container ID:  containerd://bafc602f5a4f2e953e09ff4ffa7fbbe9607c227a104a0fd0759bee23f5dec525
+    Image:         harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/m2-vllm@sha256:d3ced94ef036e8469bbbb85b8973a31c9b48bf441b565db3b3197cef36309ba9
+    Image ID:      harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/m2-vllm@sha256:d3ced94ef036e8469bbbb85b8973a31c9b48bf441b565db3b3197cef36309ba9
+    Port:          8080/TCP (http)
+    Host Port:     0/TCP (http)
+    Args:
+      /pvc-home/app/download/base_model
+      --served-model-name
+      M2
+      --tensor-parallel-size
+      8
+      --enable-expert-parallel
+      --enable-auto-tool-choice
+      --tool-call-parser
+      multi_format
+      --reasoning-parser
+      k2_v3
+      --max-model-len
+      262144
+      --max-num-seqs
+      256
+      --gpu-memory-utilization
+      0.85
+      --trust-remote-code
+      --kv-cache-dtype
+      fp8_e4m3
+      --hf-overrides
+      {"quantization_config":{"config_groups":{"group_0":{"format":"float-quantized","input_activations":{"actorder":null,"block_structure":null,"dynamic":true,"group_size":128,"num_bits":8,"observer":null,"observer_kwargs":{},"strategy":"group","symmetric":true,"type":"float"},"output_activations":null,"targets":["Linear"],"weights":{"actorder":null,"block_structure":[128,128],"dynamic":false,"group_size":null,"num_bits":8,"observer":"memoryless_minmax","observer_kwargs":{},"strategy":"block","symmetric":true,"type":"float"}}},"format":"float-quantized","global_compression_ratio":null,"ignore":["model.layers.0.self_attn.q_proj","model.layers.0.self_attn.k_proj","model.layers.0.self_attn.v_proj","model.layers.0.self_attn.o_proj","model.layers.0.mlp.gate_proj","model.layers.0.mlp.up_proj","model.layers.0.mlp.down_proj","model.layers.1.self_attn.q_proj","model.layers.1.self_attn.k_proj","model.layers.1.self_attn.v_proj","model.layers.1.self_attn.o_proj","model.layers.1.mlp.gate_proj","model.layers.1.mlp.up_proj","model.layers.1.mlp.down_proj","model.layers.2.self_attn.q_proj","model.layers.2.self_attn.k_proj","model.layers.2.self_attn.v_proj","model.layers.2.self_attn.o_proj","model.layers.2.mlp.gate_proj","model.layers.2.mlp.up_proj","model.layers.2.mlp.down_proj","model.layers.3.self_attn.q_proj","model.layers.3.self_attn.k_proj","model.layers.3.self_attn.v_proj","model.layers.3.self_attn.o_proj","model.layers.3.mlp.gate","model.layers.3.mlp.shared_experts.gate_proj","model.layers.3.mlp.shared_experts.up_proj","model.layers.3.mlp.shared_experts.down_proj","model.layers.4.self_attn.q_proj","model.layers.4.self_attn.k_proj","model.layers.4.self_attn.v_proj","model.layers.4.self_attn.o_proj","model.layers.4.mlp.gate","model.layers.4.mlp.shared_experts.gate_proj","model.layers.4.mlp.shared_experts.up_proj","model.layers.4.mlp.shared_experts.down_proj","model.layers.5.self_attn.q_proj","model.layers.5.self_attn.k_proj","model.layers.5.self_attn.v_proj","model.layers.5.self_attn.o_proj","model.layers.5.mlp.gate","model.layers.5.mlp.shared_experts.gate_proj","model.layers.5.mlp.shared_experts.up_proj","model.layers.5.mlp.shared_experts.down_proj","model.layers.6.self_attn.q_proj","model.layers.6.self_attn.k_proj","model.layers.6.self_attn.v_proj","model.layers.6.self_attn.o_proj","model.layers.6.mlp.gate","model.layers.6.mlp.shared_experts.gate_proj","model.layers.6.mlp.shared_experts.up_proj","model.layers.6.mlp.shared_experts.down_proj","model.layers.7.self_attn.q_proj","model.layers.7.self_attn.k_proj","model.layers.7.self_attn.v_proj","model.layers.7.self_attn.o_proj","model.layers.7.mlp.gate","model.layers.7.mlp.shared_experts.gate_proj","model.layers.7.mlp.shared_experts.up_proj","model.layers.7.mlp.shared_experts.down_proj","model.layers.8.self_attn.q_proj","model.layers.8.self_attn.k_proj","model.layers.8.self_attn.v_proj","model.layers.8.self_attn.o_proj","model.layers.8.mlp.gate","model.layers.8.mlp.shared_experts.gate_proj","model.layers.8.mlp.shared_experts.up_proj","model.layers.8.mlp.shared_experts.down_proj","model.layers.9.self_attn.q_proj","model.layers.9.self_attn.k_proj","model.layers.9.self_attn.v_proj","model.layers.9.self_attn.o_proj","model.layers.9.mlp.gate","model.layers.9.mlp.shared_experts.gate_proj","model.layers.9.mlp.shared_experts.up_proj","model.layers.9.mlp.shared_experts.down_proj","model.layers.10.self_attn.q_proj","model.layers.10.self_attn.k_proj","model.layers.10.self_attn.v_proj","model.layers.10.self_attn.o_proj","model.layers.10.mlp.gate","model.layers.10.mlp.shared_experts.gate_proj","model.layers.10.mlp.shared_experts.up_proj","model.layers.10.mlp.shared_experts.down_proj","model.layers.11.self_attn.q_proj","model.layers.11.self_attn.k_proj","model.layers.11.self_attn.v_proj","model.layers.11.self_attn.o_proj","model.layers.11.mlp.gate","model.layers.11.mlp.shared_experts.gate_proj","model.layers.11.mlp.shared_experts.up_proj","model.layers.11.mlp.shared_experts.down_proj","model.layers.12.self_attn.q_proj","model.layers.12.self_attn.k_proj","model.layers.12.self_attn.v_proj","model.layers.12.self_attn.o_proj","model.layers.12.mlp.gate","model.layers.12.mlp.shared_experts.gate_proj","model.layers.12.mlp.shared_experts.up_proj","model.layers.12.mlp.shared_experts.down_proj","model.layers.13.self_attn.q_proj","model.layers.13.self_attn.k_proj","model.layers.13.self_attn.v_proj","model.layers.13.self_attn.o_proj","model.layers.13.mlp.gate","model.layers.13.mlp.shared_experts.gate_proj","model.layers.13.mlp.shared_experts.up_proj","model.layers.13.mlp.shared_experts.down_proj","model.layers.14.self_attn.q_proj","model.layers.14.self_attn.k_proj","model.layers.14.self_attn.v_proj","model.layers.14.self_attn.o_proj","model.layers.14.mlp.gate","model.layers.14.mlp.shared_experts.gate_proj","model.layers.14.mlp.shared_experts.up_proj","model.layers.14.mlp.shared_experts.down_proj","model.layers.15.self_attn.q_proj","model.layers.15.self_attn.k_proj","model.layers.15.self_attn.v_proj","model.layers.15.self_attn.o_proj","model.layers.15.mlp.gate","model.layers.15.mlp.shared_experts.gate_proj","model.layers.15.mlp.shared_experts.up_proj","model.layers.15.mlp.shared_experts.down_proj","model.layers.16.self_attn.q_proj","model.layers.16.self_attn.k_proj","model.layers.16.self_attn.v_proj","model.layers.16.self_attn.o_proj","model.layers.16.mlp.gate","model.layers.16.mlp.shared_experts.gate_proj","model.layers.16.mlp.shared_experts.up_proj","model.layers.16.mlp.shared_experts.down_proj","model.layers.17.self_attn.q_proj","model.layers.17.self_attn.k_proj","model.layers.17.self_attn.v_proj","model.layers.17.self_attn.o_proj","model.layers.17.mlp.gate","model.layers.17.mlp.shared_experts.gate_proj","model.layers.17.mlp.shared_experts.up_proj","model.layers.17.mlp.shared_experts.down_proj","model.layers.18.self_attn.q_proj","model.layers.18.self_attn.k_proj","model.layers.18.self_attn.v_proj","model.layers.18.self_attn.o_proj","model.layers.18.mlp.gate","model.layers.18.mlp.shared_experts.gate_proj","model.layers.18.mlp.shared_experts.up_proj","model.layers.18.mlp.shared_experts.down_proj","model.layers.19.self_attn.q_proj","model.layers.19.self_attn.k_proj","model.layers.19.self_attn.v_proj","model.layers.19.self_attn.o_proj","model.layers.19.mlp.gate","model.layers.19.mlp.shared_experts.gate_proj","model.layers.19.mlp.shared_experts.up_proj","model.layers.19.mlp.shared_experts.down_proj","model.layers.20.self_attn.q_proj","model.layers.20.self_attn.k_proj","model.layers.20.self_attn.v_proj","model.layers.20.self_attn.o_proj","model.layers.20.mlp.gate","model.layers.20.mlp.shared_experts.gate_proj","model.layers.20.mlp.shared_experts.up_proj","model.layers.20.mlp.shared_experts.down_proj","model.layers.21.self_attn.q_proj","model.layers.21.self_attn.k_proj","model.layers.21.self_attn.v_proj","model.layers.21.self_attn.o_proj","model.layers.21.mlp.gate","model.layers.21.mlp.shared_experts.gate_proj","model.layers.21.mlp.shared_experts.up_proj","model.layers.21.mlp.shared_experts.down_proj","model.layers.22.self_attn.q_proj","model.layers.22.self_attn.k_proj","model.layers.22.self_attn.v_proj","model.layers.22.self_attn.o_proj","model.layers.22.mlp.gate","model.layers.22.mlp.shared_experts.gate_proj","model.layers.22.mlp.shared_experts.up_proj","model.layers.22.mlp.shared_experts.down_proj","model.layers.23.self_attn.q_proj","model.layers.23.self_attn.k_proj","model.layers.23.self_attn.v_proj","model.layers.23.self_attn.o_proj","model.layers.23.mlp.gate","model.layers.23.mlp.shared_experts.gate_proj","model.layers.23.mlp.shared_experts.up_proj","model.layers.23.mlp.shared_experts.down_proj","model.layers.24.self_attn.q_proj","model.layers.24.self_attn.k_proj","model.layers.24.self_attn.v_proj","model.layers.24.self_attn.o_proj","model.layers.24.mlp.gate","model.layers.24.mlp.shared_experts.gate_proj","model.layers.24.mlp.shared_experts.up_proj","model.layers.24.mlp.shared_experts.down_proj","model.layers.25.self_attn.q_proj","model.layers.25.self_attn.k_proj","model.layers.25.self_attn.v_proj","model.layers.25.self_attn.o_proj","model.layers.25.mlp.gate","model.layers.25.mlp.shared_experts.gate_proj","model.layers.25.mlp.shared_experts.up_proj","model.layers.25.mlp.shared_experts.down_proj","model.layers.26.self_attn.q_proj","model.layers.26.self_attn.k_proj","model.layers.26.self_attn.v_proj","model.layers.26.self_attn.o_proj","model.layers.26.mlp.gate","model.layers.26.mlp.shared_experts.gate_proj","model.layers.26.mlp.shared_experts.up_proj","model.layers.26.mlp.shared_experts.down_proj","model.layers.27.self_attn.q_proj","model.layers.27.self_attn.k_proj","model.layers.27.self_attn.v_proj","model.layers.27.self_attn.o_proj","model.layers.27.mlp.gate","model.layers.27.mlp.shared_experts.gate_proj","model.layers.27.mlp.shared_experts.up_proj","model.layers.27.mlp.shared_experts.down_proj","model.layers.28.self_attn.q_proj","model.layers.28.self_attn.k_proj","model.layers.28.self_attn.v_proj","model.layers.28.self_attn.o_proj","model.layers.28.mlp.gate","model.layers.28.mlp.shared_experts.gate_proj","model.layers.28.mlp.shared_experts.up_proj","model.layers.28.mlp.shared_experts.down_proj","model.layers.29.self_attn.q_proj","model.layers.29.self_attn.k_proj","model.layers.29.self_attn.v_proj","model.layers.29.self_attn.o_proj","model.layers.29.mlp.gate","model.layers.29.mlp.shared_experts.gate_proj","model.layers.29.mlp.shared_experts.up_proj","model.layers.29.mlp.shared_experts.down_proj","model.layers.30.self_attn.q_proj","model.layers.30.self_attn.k_proj","model.layers.30.self_attn.v_proj","model.layers.30.self_attn.o_proj","model.layers.30.mlp.gate","model.layers.30.mlp.shared_experts.gate_proj","model.layers.30.mlp.shared_experts.up_proj","model.layers.30.mlp.shared_experts.down_proj","model.layers.31.self_attn.q_proj","model.layers.31.self_attn.k_proj","model.layers.31.self_attn.v_proj","model.layers.31.self_attn.o_proj","model.layers.31.mlp.gate","model.layers.31.mlp.shared_experts.gate_proj","model.layers.31.mlp.shared_experts.up_proj","model.layers.31.mlp.shared_experts.down_proj","model.layers.32.self_attn.q_proj","model.layers.32.self_attn.k_proj","model.layers.32.self_attn.v_proj","model.layers.32.self_attn.o_proj","model.layers.32.mlp.gate","model.layers.32.mlp.shared_experts.gate_proj","model.layers.32.mlp.shared_experts.up_proj","model.layers.32.mlp.shared_experts.down_proj","model.layers.33.self_attn.q_proj","model.layers.33.self_attn.k_proj","model.layers.33.self_attn.v_proj","model.layers.33.self_attn.o_proj","model.layers.33.mlp.gate","model.layers.33.mlp.shared_experts.gate_proj","model.layers.33.mlp.shared_experts.up_proj","model.layers.33.mlp.shared_experts.down_proj","model.layers.34.self_attn.q_proj","model.layers.34.self_attn.k_proj","model.layers.34.self_attn.v_proj","model.layers.34.self_attn.o_proj","model.layers.34.mlp.gate","model.layers.34.mlp.shared_experts.gate_proj","model.layers.34.mlp.shared_experts.up_proj","model.layers.34.mlp.shared_experts.down_proj","model.layers.35.self_attn.q_proj","model.layers.35.self_attn.k_proj","model.layers.35.self_attn.v_proj","model.layers.35.self_attn.o_proj","model.layers.35.mlp.gate","model.layers.35.mlp.shared_experts.gate_proj","model.layers.35.mlp.shared_experts.up_proj","model.layers.35.mlp.shared_experts.down_proj","model.layers.36.self_attn.q_proj","model.layers.36.self_attn.k_proj","model.layers.36.self_attn.v_proj","model.layers.36.self_attn.o_proj","model.layers.36.mlp.gate","model.layers.36.mlp.shared_experts.gate_proj","model.layers.36.mlp.shared_experts.up_proj","model.layers.36.mlp.shared_experts.down_proj","model.layers.37.self_attn.q_proj","model.layers.37.self_attn.k_proj","model.layers.37.self_attn.v_proj","model.layers.37.self_attn.o_proj","model.layers.37.mlp.gate","model.layers.37.mlp.shared_experts.gate_proj","model.layers.37.mlp.shared_experts.up_proj","model.layers.37.mlp.shared_experts.down_proj","model.layers.38.self_attn.q_proj","model.layers.38.self_attn.k_proj","model.layers.38.self_attn.v_proj","model.layers.38.self_attn.o_proj","model.layers.38.mlp.gate","model.layers.38.mlp.shared_experts.gate_proj","model.layers.38.mlp.shared_experts.up_proj","model.layers.38.mlp.shared_experts.down_proj","model.layers.39.self_attn.q_proj","model.layers.39.self_attn.k_proj","model.layers.39.self_attn.v_proj","model.layers.39.self_attn.o_proj","model.layers.39.mlp.gate","model.layers.39.mlp.shared_experts.gate_proj","model.layers.39.mlp.shared_experts.up_proj","model.layers.39.mlp.shared_experts.down_proj","model.layers.40.self_attn.q_proj","model.layers.40.self_attn.k_proj","model.layers.40.self_attn.v_proj","model.layers.40.self_attn.o_proj","model.layers.40.mlp.gate","model.layers.40.mlp.shared_experts.gate_proj","model.layers.40.mlp.shared_experts.up_proj","model.layers.40.mlp.shared_experts.down_proj","model.layers.41.self_attn.q_proj","model.layers.41.self_attn.k_proj","model.layers.41.self_attn.v_proj","model.layers.41.self_attn.o_proj","model.layers.41.mlp.gate","model.layers.41.mlp.shared_experts.gate_proj","model.layers.41.mlp.shared_experts.up_proj","model.layers.41.mlp.shared_experts.down_proj","model.layers.42.self_attn.q_proj","model.layers.42.self_attn.k_proj","model.layers.42.self_attn.v_proj","model.layers.42.self_attn.o_proj","model.layers.42.mlp.gate","model.layers.42.mlp.shared_experts.gate_proj","model.layers.42.mlp.shared_experts.up_proj","model.layers.42.mlp.shared_experts.down_proj","model.layers.43.self_attn.q_proj","model.layers.43.self_attn.k_proj","model.layers.43.self_attn.v_proj","model.layers.43.self_attn.o_proj","model.layers.43.mlp.gate","model.layers.43.mlp.shared_experts.gate_proj","model.layers.43.mlp.shared_experts.up_proj","model.layers.43.mlp.shared_experts.down_proj","model.layers.44.self_attn.q_proj","model.layers.44.self_attn.k_proj","model.layers.44.self_attn.v_proj","model.layers.44.self_attn.o_proj","model.layers.44.mlp.gate","model.layers.44.mlp.shared_experts.gate_proj","model.layers.44.mlp.shared_experts.up_proj","model.layers.44.mlp.shared_experts.down_proj","model.layers.45.self_attn.q_proj","model.layers.45.self_attn.k_proj","model.layers.45.self_attn.v_proj","model.layers.45.self_attn.o_proj","model.layers.45.mlp.gate","model.layers.45.mlp.shared_experts.gate_proj","model.layers.45.mlp.shared_experts.up_proj","model.layers.45.mlp.shared_experts.down_proj","model.layers.46.self_attn.q_proj","model.layers.46.self_attn.k_proj","model.layers.46.self_attn.v_proj","model.layers.46.self_attn.o_proj","model.layers.46.mlp.gate","model.layers.46.mlp.shared_experts.gate_proj","model.layers.46.mlp.shared_experts.up_proj","model.layers.46.mlp.shared_experts.down_proj","model.layers.47.self_attn.q_proj","model.layers.47.self_attn.k_proj","model.layers.47.self_attn.v_proj","model.layers.47.self_attn.o_proj","model.layers.47.mlp.gate","model.layers.47.mlp.shared_experts.gate_proj","model.layers.47.mlp.shared_experts.up_proj","model.layers.47.mlp.shared_experts.down_proj","model.layers.48.self_attn.q_proj","model.layers.48.self_attn.k_proj","model.layers.48.self_attn.v_proj","model.layers.48.self_attn.o_proj","model.layers.48.mlp.gate","model.layers.48.mlp.shared_experts.gate_proj","model.layers.48.mlp.shared_experts.up_proj","model.layers.48.mlp.shared_experts.down_proj","model.layers.49.self_attn.q_proj","model.layers.49.self_attn.k_proj","model.layers.49.self_attn.v_proj","model.layers.49.self_attn.o_proj","model.layers.49.mlp.gate","model.layers.49.mlp.shared_experts.gate_proj","model.layers.49.mlp.shared_experts.up_proj","model.layers.49.mlp.shared_experts.down_proj","model.layers.50.self_attn.q_proj","model.layers.50.self_attn.k_proj","model.layers.50.self_attn.v_proj","model.layers.50.self_attn.o_proj","model.layers.50.mlp.gate","model.layers.50.mlp.shared_experts.gate_proj","model.layers.50.mlp.shared_experts.up_proj","model.layers.50.mlp.shared_experts.down_proj","model.layers.51.self_attn.q_proj","model.layers.51.self_attn.k_proj","model.layers.51.self_attn.v_proj","model.layers.51.self_attn.o_proj","model.layers.51.mlp.gate","model.layers.51.mlp.shared_experts.gate_proj","model.layers.51.mlp.shared_experts.up_proj","model.layers.51.mlp.shared_experts.down_proj","model.layers.52.self_attn.q_proj","model.layers.52.self_attn.k_proj","model.layers.52.self_attn.v_proj","model.layers.52.self_attn.o_proj","model.layers.52.mlp.gate","model.layers.52.mlp.shared_experts.gate_proj","model.layers.52.mlp.shared_experts.up_proj","model.layers.52.mlp.shared_experts.down_proj","model.layers.53.self_attn.q_proj","model.layers.53.self_attn.k_proj","model.layers.53.self_attn.v_proj","model.layers.53.self_attn.o_proj","model.layers.53.mlp.gate","model.layers.53.mlp.shared_experts.gate_proj","model.layers.53.mlp.shared_experts.up_proj","model.layers.53.mlp.shared_experts.down_proj","model.layers.54.self_attn.q_proj","model.layers.54.self_attn.k_proj","model.layers.54.self_attn.v_proj","model.layers.54.self_attn.o_proj","model.layers.54.mlp.gate","model.layers.54.mlp.shared_experts.gate_proj","model.layers.54.mlp.shared_experts.up_proj","model.layers.54.mlp.shared_experts.down_proj","model.layers.55.self_attn.q_proj","model.layers.55.self_attn.k_proj","model.layers.55.self_attn.v_proj","model.layers.55.self_attn.o_proj","model.layers.55.mlp.gate","model.layers.55.mlp.shared_experts.gate_proj","model.layers.55.mlp.shared_experts.up_proj","model.layers.55.mlp.shared_experts.down_proj","model.layers.56.self_attn.q_proj","model.layers.56.self_attn.k_proj","model.layers.56.self_attn.v_proj","model.layers.56.self_attn.o_proj","model.layers.56.mlp.gate","model.layers.56.mlp.shared_experts.gate_proj","model.layers.56.mlp.shared_experts.up_proj","model.layers.56.mlp.shared_experts.down_proj","model.layers.57.self_attn.q_proj","model.layers.57.self_attn.k_proj","model.layers.57.self_attn.v_proj","model.layers.57.self_attn.o_proj","model.layers.57.mlp.gate","model.layers.57.mlp.shared_experts.gate_proj","model.layers.57.mlp.shared_experts.up_proj","model.layers.57.mlp.shared_experts.down_proj","model.layers.58.self_attn.q_proj","model.layers.58.self_attn.k_proj","model.layers.58.self_attn.v_proj","model.layers.58.self_attn.o_proj","model.layers.58.mlp.gate","model.layers.58.mlp.shared_experts.gate_proj","model.layers.58.mlp.shared_experts.up_proj","model.layers.58.mlp.shared_experts.down_proj","model.layers.59.self_attn.q_proj","model.layers.59.self_attn.k_proj","model.layers.59.self_attn.v_proj","model.layers.59.self_attn.o_proj","model.layers.59.mlp.gate","model.layers.59.mlp.shared_experts.gate_proj","model.layers.59.mlp.shared_experts.up_proj","model.layers.59.mlp.shared_experts.down_proj","model.layers.60.self_attn.q_proj","model.layers.60.self_attn.k_proj","model.layers.60.self_attn.v_proj","model.layers.60.self_attn.o_proj","model.layers.60.mlp.gate","model.layers.60.mlp.shared_experts.gate_proj","model.layers.60.mlp.shared_experts.up_proj","model.layers.60.mlp.shared_experts.down_proj","lm_head"],"kv_cache_scheme":null,"quant_method":"compressed-tensors","quantization_status":"compressed","sparsity_config":{},"transform_config":{},"version":"0.16.0"},"max_position_embeddings":262144}
+    State:          Running
+      Started:      Mon, 09 Nov 2026 17:47:41 +0000
+    Ready:          False
+    Restart Count:  0
+    Limits:
+      cpu:              16
+      memory:           1Ti
+      nvidia.com/h200:  8
+    Requests:
+      cpu:              16
+      memory:           1Ti
+      nvidia.com/h200:  8
+    Readiness:          http-get http://:8080/v1/models delay=10s timeout=1s period=5s #success=1 #failure=3
+    Environment Variables from:
+      configmap-7ec325bf-0033-4a97-a688-e8ac30334349-main  ConfigMap  Optional: false
+      secrets-7ec325bf-0033-4a97-a688-e8ac30334349-main    Secret     Optional: false
+    Environment:
+      K8S_POD:        j-7ec325bf-0033-4a97-a688-e8ac30334349-5844cbd5f7-qrnsj (v1:metadata.name)
+      K8S_NAMESPACE:  adeo (v1:metadata.namespace)
+    Mounts:
+      /dev/shm from dshm (rw)
+      /license from m2-license (ro)
+      /pvc-home from pvc-7ec325bf-0033-4a97-a688-e8ac30334349 (rw)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       False 
+  ContainersReady             False 
+  PodScheduled                True 
+Volumes:
+  m2-license:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  model-a-license
+    Optional:    false
+  dshm:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     Memory
+    SizeLimit:  1Ti
+  pvc-7ec325bf-0033-4a97-a688-e8ac30334349:
+    Type:        PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:   pvc-7ec325bf-0033-4a97-a688-e8ac30334349
+    ReadOnly:    false
+QoS Class:       Burstable
+Node-Selectors:  kubernetes.oip/gpu-name=h200
+                 kubernetes.oip/tenant=adeo
+Tolerations:     amd.com/gpu:NoSchedule op=Exists
+                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                 node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+                 nvidia.com/gpu:NoSchedule op=Exists
+                 target=k8s:NoSchedule
+                 target=k8s:NoExecute
+                 tenant=adeo:NoSchedule
+                 tenant=adeo:NoExecute
+Events:
+  Type     Reason                           Age                    From     Message
+  ----     ------                           ----                   ----     -------
+  Normal   Scheduled                        13m                    volcano  Successfully assigned adeo/j-7ec325bf-0033-4a97-a688-e8ac30334349-5844cbd5f7-qrnsj to prd-infr-k8h200
+  Warning  FailedScheduling                 13m                    volcano  failed to bind to node prd-infr-k8h200: Operation cannot be fulfilled on pods/binding "j-7ec325bf-0033-4a97-a688-e8ac30334349-5844cbd5f7-qrnsj": pod j-7ec325bf-0033-4a97-a688-e8ac30334349-5844cbd5f7-qrnsj is already assigned to node "prd-infr-k8h200"
+  Normal   Pulling                          13m                    kubelet  Pulling image "registry.gitlab.com/openinnovationai/platform/mlops/mlops-serving/init-image:release-1.7.1"
+  Normal   Pulled                           13m                    kubelet  Successfully pulled image "registry.gitlab.com/openinnovationai/platform/mlops/mlops-serving/init-image:release-1.7.1" in 49ms (49ms including waiting). Image size: 74379576 bytes.
+  Normal   Created                          13m                    kubelet  Created container init-model-downloader
+  Normal   Started                          13m                    kubelet  Started container init-model-downloader
+  Normal   Pulling                          13m                    kubelet  Pulling image "harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/m2-vllm@sha256:d3ced94ef036e8469bbbb85b8973a31c9b48bf441b565db3b3197cef36309ba9"
+  Normal   Pulled                           13m                    kubelet  Successfully pulled image "harbor.ai.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/m2-vllm@sha256:d3ced94ef036e8469bbbb85b8973a31c9b48bf441b565db3b3197cef36309ba9" in 47ms (47ms including waiting). Image size: 13050136336 bytes.
+  Normal   Created                          13m                    kubelet  Created container main
+  Normal   Started                          13m                    kubelet  Started container main
+  Warning  FailedToRetrieveImagePullSecret  12m (x6 over 13m)      kubelet  Unable to retrieve some image pull secrets (gitlab-registry-credentials); attempting to pull the image may not succeed.
+  Warning  Unhealthy                        3m20s (x133 over 13m)  kubelet  Readiness probe failed: HTTP probe failed with statuscode: 500

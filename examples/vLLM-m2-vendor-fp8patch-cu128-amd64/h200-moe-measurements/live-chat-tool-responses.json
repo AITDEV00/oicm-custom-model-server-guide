@@ -1,0 +1,91 @@
+{
+  "chat": {
+    "http": 200,
+    "data": {
+      "id": "chatcmpl-9864b681cdc736a3",
+      "object": "chat.completion",
+      "created": 1794256115,
+      "model": "M2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": "\nM2 works\n",
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [],
+            "reasoning": "Here's a thinking process that leads to the suggested response:\n\n1.  **Analyze the Request:**\n    *   **Instruction:** \"Reply only with: M2 works\"\n    *   **Constraint:** The user wants a specific, exact string of text as the output.\n    *   **Context:** This looks like a test of instruction following or a specific command within a larger workflow (perhaps testing a model's ability to adhere to strict constraints).\n\n2.  **Determine the Output:**\n    *   The user explicitly said \"Reply only with: M2 works\".\n    *   Therefore, the response should be exactly that phrase, without additional commentary, greetings, or explanations.\n\n3.  **Draft the Response:**\n    *   *Draft 1:* M2 works\n    *   *Draft 2:* Here is the reply: M2 works (Too much)\n    *   *Draft 3:* M2 works (Correct)\n\n4.  **Final Verification:**\n    *   Does it match the instruction? Yes.\n    *   Is it concise? Yes.\n    *   Does it add anything extra? No.\n\n5.  **Final Output Generation:** (Matches Draft 3)\n    M2 works\n",
+            "reasoning_content": "Here's a thinking process that leads to the suggested response:\n\n1.  **Analyze the Request:**\n    *   **Instruction:** \"Reply only with: M2 works\"\n    *   **Constraint:** The user wants a specific, exact string of text as the output.\n    *   **Context:** This looks like a test of instruction following or a specific command within a larger workflow (perhaps testing a model's ability to adhere to strict constraints).\n\n2.  **Determine the Output:**\n    *   The user explicitly said \"Reply only with: M2 works\".\n    *   Therefore, the response should be exactly that phrase, without additional commentary, greetings, or explanations.\n\n3.  **Draft the Response:**\n    *   *Draft 1:* M2 works\n    *   *Draft 2:* Here is the reply: M2 works (Too much)\n    *   *Draft 3:* M2 works (Correct)\n\n4.  **Final Verification:**\n    *   Does it match the instruction? Yes.\n    *   Is it concise? Yes.\n    *   Does it add anything extra? No.\n\n5.  **Final Output Generation:** (Matches Draft 3)\n    M2 works\n"
+          },
+          "logprobs": null,
+          "finish_reason": "stop",
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": null,
+      "usage": {
+        "prompt_tokens": 17,
+        "total_tokens": 276,
+        "completion_tokens": 259,
+        "prompt_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "kv_transfer_params": null
+    }
+  },
+  "tool": {
+    "http": 200,
+    "data": {
+      "id": "chatcmpl-8391c1708b7c6094",
+      "object": "chat.completion",
+      "created": 1794256119,
+      "model": "M2",
+      "choices": [
+        {
+          "index": 0,
+          "message": {
+            "role": "assistant",
+            "content": null,
+            "refusal": null,
+            "annotations": null,
+            "audio": null,
+            "function_call": null,
+            "tool_calls": [
+              {
+                "id": "chatcmpl-tool-8c01d7a4241de04c",
+                "type": "function",
+                "function": {
+                  "name": "get_weather",
+                  "arguments": "{\"location\": \"Abu Dhabi\"}"
+                }
+              }
+            ],
+            "reasoning": "",
+            "reasoning_content": ""
+          },
+          "logprobs": null,
+          "finish_reason": "tool_calls",
+          "stop_reason": null,
+          "token_ids": null
+        }
+      ],
+      "service_tier": null,
+      "system_fingerprint": null,
+      "usage": {
+        "prompt_tokens": 161,
+        "total_tokens": 186,
+        "completion_tokens": 25,
+        "prompt_tokens_details": null
+      },
+      "prompt_logprobs": null,
+      "prompt_token_ids": null,
+      "kv_transfer_params": null
+    }
+  }
+}

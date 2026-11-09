@@ -1,0 +1,28 @@
+INFO 11-09 17:46:56 [importing.py:44] Triton is installed but 0 active driver(s) found (expected 1). Disabling Triton to prevent runtime errors.
+INFO 11-09 17:46:56 [importing.py:68] Triton not installed or not compatible; certain GPU-related functions will not be available.
+WARNING 11-09 17:46:56 [interface.py:221] Failed to import from vllm._C: ImportError('/usr/lib/x86_64-linux-gnu/libcuda.so.1: file too short')
+RANK 3 FACTORY CompressedTensorsW8A8Fp8MoEMethod [('layers.0.mlp.experts.w13_weight', (24, 3584, 128)), ('layers.0.mlp.experts.w2_weight', (24, 128, 1792)), ('layers.0.mlp.experts.w13_weight_scale', (24, 28, 1)), ('layers.0.mlp.experts.w2_weight_scale', (24, 1, 14))]
+LOAD 3 gate_proj weight result set() local -1
+LOAD 3 gate_proj weight_scale result set() local -1
+LOAD 3 up_proj weight result set() local -1
+LOAD 3 up_proj weight_scale result set() local -1
+LOAD 3 down_proj weight result set() local -1
+LOAD 3 down_proj weight_scale result set() local -1
+CASE_PASS 3
+RANK 4 FACTORY CompressedTensorsW8A8Fp8MoEMethod [('layers.0.mlp.experts.w13_weight', (24, 3584, 128)), ('layers.0.mlp.experts.w2_weight', (24, 128, 1792)), ('layers.0.mlp.experts.w13_weight_scale', (24, 28, 1)), ('layers.0.mlp.experts.w2_weight_scale', (24, 1, 14))]
+LOAD 4 gate_proj weight result {'layers.0.mlp.experts.w13_weight'} local 4
+LOAD 4 gate_proj weight_scale result {'layers.0.mlp.experts.w13_weight_scale'} local 4
+LOAD 4 up_proj weight result {'layers.0.mlp.experts.w13_weight'} local 4
+LOAD 4 up_proj weight_scale result {'layers.0.mlp.experts.w13_weight_scale'} local 4
+LOAD 4 down_proj weight result {'layers.0.mlp.experts.w2_weight'} local 4
+LOAD 4 down_proj weight_scale result {'layers.0.mlp.experts.w2_weight_scale'} local 4
+CASE_PASS 4
+RANK 7 FACTORY CompressedTensorsW8A8Fp8MoEMethod [('layers.0.mlp.experts.w13_weight', (24, 3584, 128)), ('layers.0.mlp.experts.w2_weight', (24, 128, 1792)), ('layers.0.mlp.experts.w13_weight_scale', (24, 28, 1)), ('layers.0.mlp.experts.w2_weight_scale', (24, 1, 14))]
+LOAD 7 gate_proj weight result set() local -1
+LOAD 7 gate_proj weight_scale result set() local -1
+LOAD 7 up_proj weight result set() local -1
+LOAD 7 up_proj weight_scale result set() local -1
+LOAD 7 down_proj weight result set() local -1
+LOAD 7 down_proj weight_scale result set() local -1
+CASE_PASS 7
+REAL_COMPRESSED_TENSORS_FACTORY_AND_EXPERT_LOCALITY_PASS

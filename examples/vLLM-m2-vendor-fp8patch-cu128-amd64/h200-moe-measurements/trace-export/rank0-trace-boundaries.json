@@ -1,0 +1,870 @@
+{
+  "file": "1794257001742072899-rank-0.1794258177004353079.pt.trace.json",
+  "raw_scanned_bytes": 16449432199,
+  "skipped": 0,
+  "events": [
+    {
+      "name": "Iteration Start: PyTorch Profiler",
+      "ph": "i",
+      "s": "g",
+      "pid": "Traces",
+      "tid": "Trace PyTorch Profiler",
+      "ts": 3400923063897.906
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_1_cached_0",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941301913.476,
+      "dur": 22235.969,
+      "args": {
+        "External id": 1
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_1_cached_0",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941304191.728,
+      "dur": 23480.666,
+      "args": {
+        "External id": 1
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941328422.73,
+      "dur": 4150.792,
+      "args": {
+        "External id": 1666
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941328572.652,
+      "dur": 14361.591,
+      "args": {
+        "External id": 1666
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941343300.646,
+      "dur": 3832.289,
+      "args": {
+        "External id": 1799
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941343414.531,
+      "dur": 13664.565,
+      "args": {
+        "External id": 1799
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941357441.813,
+      "dur": 3646.22,
+      "args": {
+        "External id": 1932
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941357578.648,
+      "dur": 13655.03,
+      "args": {
+        "External id": 1932
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941371602.325,
+      "dur": 3601.265,
+      "args": {
+        "External id": 2065
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941371736.909,
+      "dur": 13717.366,
+      "args": {
+        "External id": 2065
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941385831.965,
+      "dur": 3620.479,
+      "args": {
+        "External id": 2198
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941385968.867,
+      "dur": 13710.261,
+      "args": {
+        "External id": 2198
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941400047.242,
+      "dur": 3519.64,
+      "args": {
+        "External id": 2331
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941400162.52,
+      "dur": 13611.541,
+      "args": {
+        "External id": 2331
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941414137.961,
+      "dur": 3491.953,
+      "args": {
+        "External id": 2464
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941414261.741,
+      "dur": 13683.349,
+      "args": {
+        "External id": 2464
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_0",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941428318.844,
+      "dur": 217.47,
+      "args": {
+        "External id": 2597
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_1_cached_0",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941445346.259,
+      "dur": 16759.461,
+      "args": {
+        "External id": 2604
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_1_cached_0",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941445568.035,
+      "dur": 18607.4,
+      "args": {
+        "External id": 2604
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941464900.518,
+      "dur": 4409.304,
+      "args": {
+        "External id": 4269
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941465022.892,
+      "dur": 13663.285,
+      "args": {
+        "External id": 4269
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941479033.314,
+      "dur": 3578.061,
+      "args": {
+        "External id": 4402
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941479153.536,
+      "dur": 13645.59,
+      "args": {
+        "External id": 4402
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941493169.743,
+      "dur": 3617.595,
+      "args": {
+        "External id": 4535
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941493291.158,
+      "dur": 13676.341,
+      "args": {
+        "External id": 4535
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941507337.453,
+      "dur": 3550.205,
+      "args": {
+        "External id": 4668
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941507455.787,
+      "dur": 13742.613,
+      "args": {
+        "External id": 4668
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941521575.041,
+      "dur": 3560.961,
+      "args": {
+        "External id": 4801
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941521705.024,
+      "dur": 13633.237,
+      "args": {
+        "External id": 4801
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941535718.421,
+      "dur": 3550.077,
+      "args": {
+        "External id": 4934
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941535850.197,
+      "dur": 13666.454,
+      "args": {
+        "External id": 4934
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941549884.04,
+      "dur": 3671.312,
+      "args": {
+        "External id": 5067
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941550030.667,
+      "dur": 13625.493,
+      "args": {
+        "External id": 5067
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941564026.419,
+      "dur": 3587.979,
+      "args": {
+        "External id": 5200
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941564160.0,
+      "dur": 13513.908,
+      "args": {
+        "External id": 5200
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941578003.667,
+      "dur": 3572.382,
+      "args": {
+        "External id": 5333
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941578122.548,
+      "dur": 13567.573,
+      "args": {
+        "External id": 5333
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941592032.349,
+      "dur": 5657.646,
+      "args": {
+        "External id": 5466
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941592165.385,
+      "dur": 13274.164,
+      "args": {
+        "External id": 5466
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941606080.27,
+      "dur": 3689.607,
+      "args": {
+        "External id": 5599
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941606222.269,
+      "dur": 13561.909,
+      "args": {
+        "External id": 5599
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941620106.427,
+      "dur": 3552.533,
+      "args": {
+        "External id": 5732
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941620221.458,
+      "dur": 13496.917,
+      "args": {
+        "External id": 5732
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941634025.888,
+      "dur": 3560.74,
+      "args": {
+        "External id": 5865
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941634156.775,
+      "dur": 13680.213,
+      "args": {
+        "External id": 5865
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941648151.597,
+      "dur": 3598.71,
+      "args": {
+        "External id": 5998
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941648280.348,
+      "dur": 13676.597,
+      "args": {
+        "External id": 5998
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941662281.087,
+      "dur": 3668.988,
+      "args": {
+        "External id": 6131
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941662410.864,
+      "dur": 13647.158,
+      "args": {
+        "External id": 6131
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941676363.76,
+      "dur": 3554.26,
+      "args": {
+        "External id": 6264
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941676499.045,
+      "dur": 13647.03,
+      "args": {
+        "External id": 6264
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941690433.477,
+      "dur": 3534.841,
+      "args": {
+        "External id": 6397
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941690554.426,
+      "dur": 13605.333,
+      "args": {
+        "External id": 6397
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941704465.126,
+      "dur": 3531.438,
+      "args": {
+        "External id": 6530
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941704588.463,
+      "dur": 13660.278,
+      "args": {
+        "External id": 6530
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941718565.65,
+      "dur": 5630.739,
+      "args": {
+        "External id": 6663
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941718695.748,
+      "dur": 13485.435,
+      "args": {
+        "External id": 6663
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941732768.901,
+      "dur": 3606.625,
+      "args": {
+        "External id": 6796
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941732928.16,
+      "dur": 13634.549,
+      "args": {
+        "External id": 6796
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941746860.408,
+      "dur": 3572.268,
+      "args": {
+        "External id": 6929
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941746984.725,
+      "dur": 13596.373,
+      "args": {
+        "External id": 6929
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 41,
+      "tid": 41,
+      "ts": 3400941760895.279,
+      "dur": 3600.115,
+      "args": {
+        "External id": 7062
+      }
+    },
+    {
+      "ph": "X",
+      "cat": "gpu_user_annotation",
+      "name": "execute_new_0_cached_1",
+      "pid": 0,
+      "tid": 7,
+      "ts": 3400941761009.545,
+      "dur": 13706.806,
+      "args": {
+        "External id": 7062
+      }
+    }
+  ],
+  "summary": {
+    "Iteration Start: PyTorch Profiler": {
+      "count": 1,
+      "first_ts": 3400923063897.906,
+      "last_ts": 3400923063897.906,
+      "duration_sum_ms": 0.0,
+      "duration_ms": [
+        0.0
+      ]
+    },
+    "execute_new_1_cached_0": {
+      "count": 4,
+      "first_ts": 3400941301913.476,
+      "last_ts": 3400941445568.035,
+      "duration_sum_ms": 81.083496,
+      "duration_ms": [
+        22.235969,
+        23.480666,
+        16.759460999999998,
+        18.607400000000002
+      ]
+    },
+    "execute_new_0_cached_1": {
+      "count": 58,
+      "first_ts": 3400941328422.73,
+      "last_ts": 3400941761009.545,
+      "duration_sum_ms": 505.529983,
+      "duration_ms": [
+        4.150792,
+        14.361591,
+        3.8322890000000003,
+        13.664565,
+        3.64622,
+        13.65503,
+        3.6012649999999997,
+        13.717366,
+        3.620479,
+        13.710261000000001,
+        3.51964,
+        13.611540999999999,
+        3.491953,
+        13.683349,
+        4.409304,
+        13.663285,
+        3.578061,
+        13.64559,
+        3.6175949999999997,
+        13.676341,
+        3.550205,
+        13.742612999999999,
+        3.560961,
+        13.633237,
+        3.5500770000000004,
+        13.666454,
+        3.671312,
+        13.625493,
+        3.587979,
+        13.513907999999999,
+        3.572382,
+        13.567573,
+        5.657646,
+        13.274164,
+        3.689607,
+        13.561909,
+        3.552533,
+        13.496917,
+        3.5607399999999996,
+        13.680213,
+        3.59871,
+        13.676597,
+        3.6689879999999997,
+        13.647158,
+        3.55426,
+        13.64703,
+        3.5348409999999997,
+        13.605333,
+        3.531438,
+        13.660278,
+        5.630738999999999,
+        13.485434999999999,
+        3.606625,
+        13.634549000000002,
+        3.572268,
+        13.596373,
+        3.6001149999999997,
+        13.706806
+      ]
+    },
+    "execute_new_0_cached_0": {
+      "count": 1,
+      "first_ts": 3400941428318.844,
+      "last_ts": 3400941428318.844,
+      "duration_sum_ms": 0.21747,
+      "duration_ms": [
+        0.21747
+      ]
+    }
+  },
+  "warning": "Cuda graph annotation duration overcounts GPU duration through sibling overlap; only timestamps describe scheduling here."
+}

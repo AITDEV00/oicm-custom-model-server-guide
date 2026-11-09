@@ -1,0 +1,75 @@
+{
+  "interface": "direct_private_loopback_no_public_gateway_or_DNS_latency",
+  "model": "M2",
+  "prompt_tokens": 26,
+  "max_completion_tokens": 256,
+  "temperature": 0,
+  "number_of_warm_requests_prior": 2,
+  "walls": [
+    {
+      "elapsed": 4.477888345718384,
+      "tokens": 256,
+      "prompt_tokens": 26,
+      "finish": "length",
+      "tps": 57.16980421023207
+    },
+    {
+      "elapsed": 4.431261777877808,
+      "tokens": 256,
+      "prompt_tokens": 26,
+      "finish": "length",
+      "tps": 57.771355616594136
+    },
+    {
+      "elapsed": 4.456845283508301,
+      "tokens": 256,
+      "prompt_tokens": 26,
+      "finish": "length",
+      "tps": 57.439732302864265
+    }
+  ],
+  "single_stats": {},
+  "batches": [
+    {
+      "wall": 3.7358365058898926,
+      "agg_tps": 548.2038619118204,
+      "per_req_min_max": [
+        68.57158592805187,
+        68.98656179729946
+      ],
+      "pre_window": [
+        1564.0,
+        3612.0
+      ]
+    },
+    {
+      "wall": 3.7333734035491943,
+      "agg_tps": 548.5655407661699,
+      "per_req_min_max": [
+        68.67427258281509,
+        68.98654406810468
+      ],
+      "pre_window": [
+        3612.0,
+        5660.0
+      ]
+    },
+    {
+      "wall": 3.7403831481933594,
+      "agg_tps": 547.5374898395645,
+      "per_req_min_max": [
+        68.52742014364733,
+        68.85708514180082
+      ],
+      "pre_window": [
+        5660.0,
+        7708.0
+      ]
+    }
+  ],
+  "baseline_reference": {
+    "single_client_rate": 48.4193209671147,
+    "eight_batch": 445.1091601094894
+  },
+  "caution": "fixed warm decode; not cold-cache or controlled interleaved public-gateway A/B; no guarantee across prompt lengths or all batches"
+}

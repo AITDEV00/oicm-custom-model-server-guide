@@ -1,0 +1,475 @@
+{
+  "pod_uid": "52dc3041-c76d-402a-9c39-97a2d182bd5e",
+  "ngram_k": 2,
+  "protocol": "TP8-ranked original vendor with no profile; fixed loopback temp0 same universe A/B",
+  "initial_counters": {
+    "vllm:spec_decode_num_drafts_total": 833.0,
+    "vllm:spec_decode_num_draft_tokens_total": 1666.0,
+    "vllm:spec_decode_num_accepted_tokens_total": 723.0,
+    "vllm:generation_tokens_total": 9436.0,
+    "accepted_by_position": {
+      "position=\"0\"}": 485.0,
+      "position=\"1\"}": 238.0
+    }
+  },
+  "model_eos_and_tool_acceptance": {
+    "eos_native_stop": true,
+    "m2_response_correct": true,
+    "tool_location_correct": true,
+    "tool_finish_reason": "tool_calls",
+    "chat_usage": {
+      "chat_prompt_tokens": 16,
+      "chat_completion_tokens": 30
+    }
+  },
+  "fixed_reference": {
+    "prompt": "Write three concise bullet points explaining how expert parallelism improves mixture-of-experts inference.",
+    "prompt_tokens": 26,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "warmups": 2,
+    "singles": [
+      {
+        "elapsed_s": 3.5813945308327675,
+        "completion_tokens": 256,
+        "prompt_tokens": 26,
+        "finish": "length",
+        "generated_tokens_per_s": 71.48053580694818,
+        "content_reply_eos_checked_success": true,
+        "output_sha256": "13a3b3cdcfe0cc1d81ceb51ccbf34df6f0f6f3868d6460a48242d27281e6312f",
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 16.0,
+          "vllm:spec_decode_num_draft_tokens_total": 32.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 13.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 9.0,
+            "position=\"1\"}": 4.0
+          },
+          "mean_acceptance_length_including_bonus": 1.8125,
+          "token_acceptance_ratio": 0.40625
+        }
+      },
+      {
+        "elapsed_s": 3.602360300719738,
+        "completion_tokens": 256,
+        "prompt_tokens": 26,
+        "finish": "length",
+        "generated_tokens_per_s": 71.06451843499724,
+        "content_reply_eos_checked_success": true,
+        "output_sha256": "13a3b3cdcfe0cc1d81ceb51ccbf34df6f0f6f3868d6460a48242d27281e6312f",
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 16.0,
+          "vllm:spec_decode_num_draft_tokens_total": 32.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 13.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 9.0,
+            "position=\"1\"}": 4.0
+          },
+          "mean_acceptance_length_including_bonus": 1.8125,
+          "token_acceptance_ratio": 0.40625
+        }
+      },
+      {
+        "elapsed_s": 3.5923340395092964,
+        "completion_tokens": 256,
+        "prompt_tokens": 26,
+        "finish": "length",
+        "generated_tokens_per_s": 71.2628606316825,
+        "content_reply_eos_checked_success": true,
+        "output_sha256": "13a3b3cdcfe0cc1d81ceb51ccbf34df6f0f6f3868d6460a48242d27281e6312f",
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 16.0,
+          "vllm:spec_decode_num_draft_tokens_total": 32.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 13.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 9.0,
+            "position=\"1\"}": 4.0
+          },
+          "mean_acceptance_length_including_bonus": 1.8125,
+          "token_acceptance_ratio": 0.40625
+        }
+      }
+    ],
+    "single_median_tps": 71.2628606316825,
+    "single_median_request_latency_s": 3.5923340395092964,
+    "parallel": {
+      "1": {
+        "wall_s": 3.596229512244463,
+        "generated_tokens_per_s": 71.18566796929109,
+        "total_tokens": 256,
+        "per_request": [
+          {
+            "elapsed_s": 3.594203945249319,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 71.22578570934212,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "13a3b3cdcfe0cc1d81ceb51ccbf34df6f0f6f3868d6460a48242d27281e6312f"
+          }
+        ],
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 16.0,
+          "vllm:spec_decode_num_draft_tokens_total": 32.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 13.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 9.0,
+            "position=\"1\"}": 4.0
+          },
+          "mean_acceptance_length_including_bonus": 1.8125,
+          "token_acceptance_ratio": 0.40625
+        },
+        "expected_gen_from_completed_requests": 256,
+        "counter_skew": 0.0,
+        "metric_confinement_note": null,
+        "speculative_stats_after": {
+          "vllm:spec_decode_num_drafts_total": 929.0,
+          "vllm:spec_decode_num_draft_tokens_total": 1858.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 801.0,
+          "vllm:generation_tokens_total": 10972.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 539.0,
+            "position=\"1\"}": 262.0
+          }
+        }
+      },
+      "2": {
+        "wall_s": 3.4638219363987446,
+        "generated_tokens_per_s": 147.81360283557606,
+        "total_tokens": 512,
+        "per_request": [
+          {
+            "elapsed_s": 3.4626892246305943,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 73.93097774384027,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "13a3b3cdcfe0cc1d81ceb51ccbf34df6f0f6f3868d6460a48242d27281e6312f"
+          },
+          {
+            "elapsed_s": 3.4608173072338104,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 73.97096618330822,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "13a3b3cdcfe0cc1d81ceb51ccbf34df6f0f6f3868d6460a48242d27281e6312f"
+          }
+        ],
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 32.0,
+          "vllm:spec_decode_num_draft_tokens_total": 64.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 26.0,
+          "vllm:generation_tokens_total": 512.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 18.0,
+            "position=\"1\"}": 8.0
+          },
+          "mean_acceptance_length_including_bonus": 1.8125,
+          "token_acceptance_ratio": 0.40625
+        },
+        "expected_gen_from_completed_requests": 512,
+        "counter_skew": 0.0,
+        "metric_confinement_note": null,
+        "speculative_stats_after": {
+          "vllm:spec_decode_num_drafts_total": 961.0,
+          "vllm:spec_decode_num_draft_tokens_total": 1922.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 827.0,
+          "vllm:generation_tokens_total": 11484.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 557.0,
+            "position=\"1\"}": 270.0
+          }
+        }
+      },
+      "8": {
+        "wall_s": 3.9254840314388275,
+        "generated_tokens_per_s": 521.7191010325766,
+        "total_tokens": 2048,
+        "per_request": [
+          {
+            "elapsed_s": 3.9235891811549664,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.24638237600671,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "d4ab683fb94da4b99b0cd11d6d9a27b5d0d8d8cf151187d2465d257615062982"
+          },
+          {
+            "elapsed_s": 3.9231123216450214,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.25431316038774,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          },
+          {
+            "elapsed_s": 3.921205010265112,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.28605347841578,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          },
+          {
+            "elapsed_s": 3.9193233139812946,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.31739779843582,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          },
+          {
+            "elapsed_s": 3.9174814112484455,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.34810842112367,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          },
+          {
+            "elapsed_s": 3.9141544327139854,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.40365343288089,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          },
+          {
+            "elapsed_s": 3.9147569499909878,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.39358720612,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          },
+          {
+            "elapsed_s": 3.912946693599224,
+            "completion_tokens": 256,
+            "prompt_tokens": 26,
+            "finish": "length",
+            "generated_tokens_per_s": 65.42384040619908,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "b4d9863e4df61983efbd7d01af7338dc20dd88e281978145ef09f5b9488d408a"
+          }
+        ],
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 145.0,
+          "vllm:spec_decode_num_draft_tokens_total": 290.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 111.0,
+          "vllm:generation_tokens_total": 2048.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 71.0,
+            "position=\"1\"}": 40.0
+          },
+          "mean_acceptance_length_including_bonus": 1.7655172413793103,
+          "token_acceptance_ratio": 0.38275862068965516
+        },
+        "expected_gen_from_completed_requests": 2048,
+        "counter_skew": 0.0,
+        "metric_confinement_note": null,
+        "speculative_stats_after": {
+          "vllm:spec_decode_num_drafts_total": 1106.0,
+          "vllm:spec_decode_num_draft_tokens_total": 2212.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 938.0,
+          "vllm:generation_tokens_total": 13532.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 628.0,
+            "position=\"1\"}": 310.0
+          }
+        }
+      }
+    }
+  },
+  "repetitive_generation": {
+    "prompt": "Repeat the following four-line block verbatim exactly ten times, with no other text: alpha beta gamma delta. alpha beta gamma delta alpha. beta gamma gamma delta numeric 497. quantized experts route through shared communication.",
+    "prompt_tokens": 53,
+    "max_completion_tokens": 256,
+    "temperature": 0,
+    "warmups": 2,
+    "singles": [
+      {
+        "elapsed_s": 3.158855065703392,
+        "completion_tokens": 256,
+        "prompt_tokens": 53,
+        "finish": "length",
+        "generated_tokens_per_s": 81.04202145247702,
+        "content_reply_eos_checked_success": true,
+        "output_sha256": "4262b27ad3b1862a3bb95fdb3c35c2223618b49bdf11d64bac1198d1da7666f1",
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 41.0,
+          "vllm:spec_decode_num_draft_tokens_total": 82.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 40.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 27.0,
+            "position=\"1\"}": 13.0
+          },
+          "mean_acceptance_length_including_bonus": 1.975609756097561,
+          "token_acceptance_ratio": 0.4878048780487805
+        }
+      },
+      {
+        "elapsed_s": 3.15992122143507,
+        "completion_tokens": 256,
+        "prompt_tokens": 53,
+        "finish": "length",
+        "generated_tokens_per_s": 81.01467791774196,
+        "content_reply_eos_checked_success": true,
+        "output_sha256": "4262b27ad3b1862a3bb95fdb3c35c2223618b49bdf11d64bac1198d1da7666f1",
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 41.0,
+          "vllm:spec_decode_num_draft_tokens_total": 82.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 40.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 27.0,
+            "position=\"1\"}": 13.0
+          },
+          "mean_acceptance_length_including_bonus": 1.975609756097561,
+          "token_acceptance_ratio": 0.4878048780487805
+        }
+      },
+      {
+        "elapsed_s": 3.142315126955509,
+        "completion_tokens": 256,
+        "prompt_tokens": 53,
+        "finish": "length",
+        "generated_tokens_per_s": 81.46859549634998,
+        "content_reply_eos_checked_success": true,
+        "output_sha256": "4262b27ad3b1862a3bb95fdb3c35c2223618b49bdf11d64bac1198d1da7666f1",
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 41.0,
+          "vllm:spec_decode_num_draft_tokens_total": 82.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 40.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 27.0,
+            "position=\"1\"}": 13.0
+          },
+          "mean_acceptance_length_including_bonus": 1.975609756097561,
+          "token_acceptance_ratio": 0.4878048780487805
+        }
+      }
+    ],
+    "single_median_tps": 81.04202145247702,
+    "single_median_request_latency_s": 3.158855065703392,
+    "parallel": {
+      "1": {
+        "wall_s": 3.147139322012663,
+        "generated_tokens_per_s": 81.34371370514431,
+        "total_tokens": 256,
+        "per_request": [
+          {
+            "elapsed_s": 3.1463915407657623,
+            "completion_tokens": 256,
+            "prompt_tokens": 53,
+            "finish": "length",
+            "generated_tokens_per_s": 81.36304610636451,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "4262b27ad3b1862a3bb95fdb3c35c2223618b49bdf11d64bac1198d1da7666f1"
+          }
+        ],
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 41.0,
+          "vllm:spec_decode_num_draft_tokens_total": 82.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 40.0,
+          "vllm:generation_tokens_total": 256.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 27.0,
+            "position=\"1\"}": 13.0
+          },
+          "mean_acceptance_length_including_bonus": 1.975609756097561,
+          "token_acceptance_ratio": 0.4878048780487805
+        },
+        "expected_gen_from_completed_requests": 256,
+        "counter_skew": 0.0,
+        "metric_confinement_note": null,
+        "speculative_stats_after": {
+          "vllm:spec_decode_num_drafts_total": 1352.0,
+          "vllm:spec_decode_num_draft_tokens_total": 2704.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 1178.0,
+          "vllm:generation_tokens_total": 15068.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 790.0,
+            "position=\"1\"}": 388.0
+          }
+        }
+      },
+      "2": {
+        "wall_s": 3.3628364354372025,
+        "generated_tokens_per_s": 152.25242435362006,
+        "total_tokens": 512,
+        "per_request": [
+          {
+            "elapsed_s": 3.3467606231570244,
+            "completion_tokens": 256,
+            "prompt_tokens": 53,
+            "finish": "length",
+            "generated_tokens_per_s": 76.4918764218378,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "4262b27ad3b1862a3bb95fdb3c35c2223618b49bdf11d64bac1198d1da7666f1"
+          },
+          {
+            "elapsed_s": 3.3611385338008404,
+            "completion_tokens": 256,
+            "prompt_tokens": 53,
+            "finish": "length",
+            "generated_tokens_per_s": 76.16466784262839,
+            "content_reply_eos_checked_success": true,
+            "output_sha256": "4262b27ad3b1862a3bb95fdb3c35c2223618b49bdf11d64bac1198d1da7666f1"
+          }
+        ],
+        "counters": {
+          "vllm:spec_decode_num_drafts_total": 82.0,
+          "vllm:spec_decode_num_draft_tokens_total": 164.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 80.0,
+          "vllm:generation_tokens_total": 512.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 54.0,
+            "position=\"1\"}": 26.0
+          },
+          "mean_acceptance_length_including_bonus": 1.975609756097561,
+          "token_acceptance_ratio": 0.4878048780487805
+        },
+        "expected_gen_from_completed_requests": 512,
+        "counter_skew": 0.0,
+        "metric_confinement_note": null,
+        "speculative_stats_after": {
+          "vllm:spec_decode_num_drafts_total": 1434.0,
+          "vllm:spec_decode_num_draft_tokens_total": 2868.0,
+          "vllm:spec_decode_num_accepted_tokens_total": 1258.0,
+          "vllm:generation_tokens_total": 15580.0,
+          "accepted_by_position": {
+            "position=\"0\"}": 844.0,
+            "position=\"1\"}": 414.0
+          }
+        }
+      }
+    }
+  },
+  "total_benchmark_wall_s": 51.33462384715676,
+  "all_checks_passed": true,
+  "final_counters": {
+    "vllm:spec_decode_num_drafts_total": 1434.0,
+    "vllm:spec_decode_num_draft_tokens_total": 2868.0,
+    "vllm:spec_decode_num_accepted_tokens_total": 1258.0,
+    "vllm:generation_tokens_total": 15580.0,
+    "accepted_by_position": {
+      "position=\"0\"}": 844.0,
+      "position=\"1\"}": 414.0
+    }
+  }
+}
