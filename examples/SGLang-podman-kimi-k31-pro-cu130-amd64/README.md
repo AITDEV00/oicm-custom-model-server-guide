@@ -218,7 +218,24 @@ make verify-sglang-podman-kimi-k31-pro
 
 ## Push
 
-Use the MinIO relay, **not** `podman push`:
+### Supported cold-transfer default for v0.5.23
+
+For a cold, authorized large-image transfer, use the [canonical Al Ain HF →
+MinIO → Harbor runbook](../../../devops-custom-models/docs/oicm/runbooks/alain-image-hf-relay-runbook.md).
+This repository-relative source link intentionally leaves the server guide's
+MkDocs `docs/` tree; use the [canonical runbook on
+GitHub](https://github.com/AITDEV00/devops-custom-models/blob/main/docs/oicm/runbooks/alain-image-hf-relay-runbook.md)
+for the site-safe cross-repo reference. The tested SGLang v0.5.23 archive is
+39.79 GB; it was imported and published as `sglang:0.5.23-cu130-amd64` on
+2026-11-11. Image transport does not deploy a model or verify this K3.1
+preview's serving path.
+
+### OCI-directory MinIO relay — valid internal low-delta alternative
+
+The **existing internal OCI-directory MinIO relay below remains a valid
+low-delta alternative**, not the default v0.5.23 cold-transfer route. It avoids
+the public HF leg and reduces network transfer when this image harness changes,
+but its MinIO/node reuse and registry identity still require validation:
 
 ```bash
 make deliver-sglang-podman-kimi-k31-pro
@@ -252,11 +269,15 @@ monolithic tar:
    harness edit rewrites only the changed blob, not all 16 GB.
 2. A ledger (`_delivery.json`) in S3 records delivered blob digests. It is
    written **last**, so an aborted run never claims blobs it did not send.
-3. `mc mirror` (no `--overwrite`) skips objects already present at the right
-   size. **Blobs are content-addressed, so equal size means equal bytes** — this
-   is a complete correctness test, not a heuristic.
+3. `mc mirror` (no `--overwrite`) uses size equality as a **fast preflight
+   only**, not a complete correctness test. Trusted reuse must validate the
+   content-addressed OCI index and every expected blob digest/content, with the
+   independently known source image identity. An equal-size wrong object is not
+   equal bytes, and a stale size-only cache/ledger is not proof of publication.
 4. The node fetches only missing blobs, then tars the oci-dir **locally** (disk
    speed, no network) and `ctr images import`s it, and removes its scratch.
+   Validate the imported config/digest and read back Harbor's manifest (config,
+   manifest digest and ordered layers); do not close out from process status.
 
 | Run | Mirror (MinIO) | Node fetch | Total |
 |---|---|---|---|
@@ -266,10 +287,10 @@ monolithic tar:
 The repeat run is dominated by the node's local `tar` (~16 GB) + `ctr import` +
 `ctr push` — not by the network. `FRESH=1` forces the upload-everything path.
 
-### Three bugs this script had, and why they were not obvious
+### Delivery and pipeline pitfalls
 
-All three were found only by running the delivery end to end; each is now fixed
-and commented in place.
+The original script bugs were found only by running the delivery end to end.
+Their historical fixes and publication caveats are retained here.
 
 1. **`kubectl cp` needs `tar` inside the container.** The nettest relay image
    ships none, so step 6 died with `exec: "tar": executable file not found`.
@@ -280,11 +301,17 @@ and commented in place.
    `libexpat.so.1`, and **inside the chroot `/host/tmp/...` must be rewritten to
    `/tmp/...`** (`${D#/host}`). Same for `tar`/`du` — the container has neither,
    but `/host/usr/bin/{tar,du}` run fine directly.
-3. **`grep -q` under `set -o pipefail` is a race.** The preflight alias check
-   failed ~4% of runs (measured 2/50) with no config change: `grep -q` exits at
-   the first match, the producer then dies of SIGPIPE, and `pipefail` reports
-   that as failure. Replaced with `grep -c`. The same latent bug exists in
-   `SGLang-podman-omni-dev-cu130-amd64/deliver-image.sh` and is fixed there too.
+3. **`grep -q` under `set -o pipefail` can cause a false failure via SIGPIPE.**
+   The preflight producer is sensitive to its reader closing early. `grep -q`
+   exits at the first match; if the producer then receives SIGPIPE, `pipefail`
+   reports failure despite a match. The observed ~4% rate is workload dependent,
+   not universal timing. Use a non-early-exit `grep -c`, or retain the full
+   output/status separately. Note this instead of changing unrelated commands.
+4. **A critical import/push piped to `tail` can have its failure masked** when
+   `pipefail` is not enabled, and `$?` after a later pipeline does not recover
+   the `ctr` status. Capture that original command status explicitly; never
+   declare Harbor publication from pipeline completion, percent output, or a
+   still-running process. Read back the actual registry manifest/digests.
 
 A fourth, non-fatal issue: `mc mirror --overwrite` compares **mtimes**, and every
 `podman save` writes fresh ones — so a no-op re-delivery re-uploaded all
@@ -292,16 +319,21 @@ A fourth, non-fatal issue: `mc mirror --overwrite` compares **mtimes**, and ever
 
 ### Re-running after an interrupted delivery
 
-The ledger makes this safe and cheap. If a run dies at any point, re-run the same
-command: blobs already in S3 are skipped, blobs already on the node are reused,
-and the ledger is only updated after a successful push to Harbor.
+The ledger makes this cheap, **conditional on integrity and identity checks**.
+If a run dies at any point, re-run the same command: matching preflight entries
+may avoid transfer, while every trusted reuse requires OCI content-address and
+source/manifest verification. Do not assume an old ledger or retained node tar
+proves successful publication. On failure retain diagnostic evidence, inspect
+actual Harbor readback, and publish again only with known authenticated input.
 
 ⚠️ The node's oci-dir (`/host/tmp/${NAME}.oci`, ~16 GB) is a **hostPath**, and it
 is deliberately **kept** after a delivery: it is the node-side blob cache that
-makes the next run skip 77 of 79 objects. Blobs are content-addressed, so a
-stale entry can never be wrong. The transient `.tar` (~16 GB) **is** removed at
-the end of step 7. If you ever want the space back, delete the directory on
-`adeo-gpu-02` — the next delivery simply re-fetches from MinIO.
+can let a subsequent run skip most objects. A **stale entry can be wrong**, and
+equal size or a content-addressed filename alone does not prove its contents.
+Trusted reuse needs content/digest validation against the expected OCI image
+and final registry config/manifest/layer readback. The transient `.tar` (~16 GB)
+**is** removed at the end of step 7. If you ever want the space back, delete the
+directory on `adeo-gpu-02` — the next delivery simply re-fetches from MinIO.
 
 ## Files
 

@@ -42,8 +42,14 @@ MC_BUCKET="${MC_BUCKET:-oi-deployment-files}"
 MC_THREADS="${MC_THREADS:-64}"
 
 REGISTRY="${REGISTRY:-registry.adeoaiengine.ecouncil.ae}"
-REG_USER="${REG_USER:-custom-images}"
-REG_PASS="${REG_PASS:-CustomImages123}"
+set +x
+# Reuse the caller's inherited authorized protected environment. No default
+# Basic secret is embedded in this repository, and tracing stays disabled.
+REG_USER="${REG_USER:-}"
+REG_PASS="${REG_PASS:-}"
+export REG_USER REG_PASS
+[[ -n "$REG_USER" && -n "$REG_PASS" ]] || die 'Provide existing authorized registry credentials via REG_USER and REG_PASS; no default credential is stored in this helper.'
+[[ "$REG_USER" == *$'\n'* || "$REG_PASS" == *$'\n'* ]] && die 'Registry values must not contain line feeds'
 
 STAGING_NS="${STAGING_NS:-pause-push}"
 STAGING_POD="${STAGING_POD:-img-staging}"
@@ -176,10 +182,21 @@ fi
 echo \"      imported as: \$SRC\"
 
 \$CTR images tag --force \"\$SRC\" '${TARGET}'
-echo '      tagging ok, pushing...'
-\$CTR images push --skip-verify -u '${REG_USER}:${REG_PASS}' '${TARGET}' 2>&1 | tail -5
-echo '      push complete'
+echo '      target tag ready; separate protected-auth publisher follows'
 "
+
+# Protected stdin is separate from the bash -c script and never appears in the
+# outer kubectl/bash argv. ctr itself still exposes its -u argv to superusers.
+printf '%s:%s\n' "$REG_USER" "$REG_PASS" | \
+kubectl exec -i -n "$STAGING_NS" "$STAGING_POD" -- bash -c '
+set -euo pipefail
+IFS= read -r REG_BASIC
+CTR=(/host/usr/bin/ctr -a /host/run/containerd/containerd.sock -n k8s.io)
+TARGET="$1"
+test "$("${CTR[@]}" images list -q "name==${TARGET}")" = "$TARGET"
+"${CTR[@]}" images push --skip-verify -u "$REG_BASIC" "$TARGET"
+' -- "$TARGET"
+say '      push returned success; independent registry identity check follows'
 
 # --- 7. verify ---------------------------------------------------------------
 say "7/7  verify against the registry"
@@ -195,13 +212,27 @@ say "7/7  verify against the registry"
 #   with/without the "<project>/" prefix -> NOT_FOUND
 # The push definitely succeeded (the manifest is served by /v2), so the REST
 # endpoint is simply unreliable here. The /v2 check is also a STRONGER test: it
-# compares the config digest the registry serves against the local image ID,
-# which proves the bytes in Harbor are the bytes we just built.
-REG_MANIFEST=$(curl -sk -u "${REG_USER}:${REG_PASS}" \
-    -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
-    -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
-    -D /tmp/verify-headers.txt \
-    "https://${REGISTRY}/v2/${REPO}/manifests/${TAG}")
+# compares the config digest the registry serves against the local image ID.
+# Basic auth is read from protected inherited data, not command arguments.
+REG_MANIFEST=$(python3 - "$REGISTRY" "$REPO" "$TAG" <<'PY'
+import base64,json,os,ssl,sys,urllib.request
+host,repo,tag=sys.argv[1:4]
+url=f'https://{host}/v2/{repo}/manifests/{tag}'
+headers={
+ 'Accept':'application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json',
+ 'Authorization':'Basic '+base64.b64encode(f"{os.environ['REG_USER']}:{os.environ['REG_PASS']}".encode()).decode(),
+}
+try:
+ with urllib.request.urlopen(urllib.request.Request(url,headers=headers),context=ssl._create_unverified_context(),timeout=90) as response:
+  body=response.read()
+  assert response.status == 200
+  manifest=json.loads(body)
+  assert manifest.get('config',{}).get('digest'), 'Body is not an image manifest'
+  print(body.decode(),end='')
+except Exception as exc:
+ raise SystemExit('Registry readback failed: '+type(exc).__name__) from None
+PY
+)
 
 [[ -n "$REG_MANIFEST" ]] || die "registry returned an empty manifest for ${TARGET}"
 

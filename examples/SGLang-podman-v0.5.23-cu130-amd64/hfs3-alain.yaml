@@ -1,0 +1,18 @@
+# Run on oiadmin@10.34.104.99 from /home/oiadmin/hfs3-runs.
+# Credentials: AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY only; never store them here.
+repo: maxJasper/sglang-0.5.23-cu130-amd64
+revision: 25bb4121e30d40d2257ed7b9007763f7ca0c3b0e
+bucket: oi-deployment-files
+prefix: runtime/sglang-0.5.23-cu130-amd64-hf
+endpoint: https://minio-api.adeoaiengine.ecouncil.ae
+region: us-east-1
+insecure: true
+part_size: 16M
+workers: 24
+retries: 8
+verify: hash
+journal: /home/oiadmin/hfs3-runs/sglang-0.5.23.db
+manifest_file: manifest.sha256
+adopt_orphans: true
+adopt_existing: true
+ready_marker: true

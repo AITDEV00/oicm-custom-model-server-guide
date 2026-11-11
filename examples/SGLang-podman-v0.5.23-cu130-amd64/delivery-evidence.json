@@ -1,0 +1,81 @@
+{
+  "recorded_date": "2026-11-11",
+  "artifact_kind": "single-image Docker transport archive; no model weights; no model deployment",
+  "image": "registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.23-cu130-amd64",
+  "platform": "linux/amd64",
+  "image_config_digest": "sha256:ab8fc368a60473e329bde89157d84b20ce3bef8fddd5b6bf4999df65c4392cf5",
+  "archive": {
+    "filename": "sglang-0.5.23-cu130-amd64.tar",
+    "size_bytes": 39787218432,
+    "sha256": "570648111409bdece6ec93192643808a30787311059c90f451e487cfe145c20a",
+    "format": "docker-archive",
+    "image_entries": 1,
+    "layer_members": 75,
+    "config_member": "ab8fc368a60473e329bde89157d84b20ce3bef8fddd5b6bf4999df65c4392cf5.json",
+    "total_config_and_uncompressed_layer_bytes": 39786978626,
+    "original_source": "localhost/oicm/sglang:0.5.23-cu130-amd64",
+    "podman_image_inspected_size_bytes": 39787002490,
+    "size_note": "Raw tar, Podman image inspect and registry compressed totals are not interchangeable.",
+    "source_checks": "Earlier OICM image test verified python sglang.__version__=0.5.23, arg-normalizer JSON/PASS, startup shell syntax, runtime UID 10000, /app/startup.sh entrypoint, /app working dir and read-only-root filesystem startup. No GPU/model inference test or DeepSeek fix certification."
+  },
+  "hf": {
+    "repo": "maxJasper/sglang-0.5.23-cu130-amd64",
+    "main_commit": "25bb4121e30d40d2257ed7b9007763f7ca0c3b0e",
+    "file": "sglang-0.5.23-cu130-amd64.tar",
+    "size_bytes": 39787218432,
+    "lfs_sha256_matches_source_raw_archive": true,
+    "public_head_observed": 200,
+    "public_manifest_sha256_matches_source": true,
+    "note": "The successful hf CLI no-change commit and exact remote metadata were verified. HFS relay is authorized public transport only and is not an OCI registry."
+  },
+  "minio": {
+    "access": "existing oiadmin@10.34.104.99, ~/hfs3-runs/sglang0523.yml and independent same-target MinIO credential mechanism",
+    "bucket": "oi-deployment-files",
+    "prefix": "runtime/sglang-0.5.23-cu130-amd64-hf",
+    "object": "sglang-0.5.23-cu130-amd64.tar",
+    "size_bytes": 39787218432,
+    "etag": "16114660a316db9969f58a1da9bf04fd-2372",
+    "completed_multipart_parts": 2372,
+    "nominal_part_size": "16 MiB",
+    "journal": "/home/oiadmin/hfs3-runs/sglang-0.5.23.db",
+    "journal_row": "completed, verified='hash'",
+    "ready_marker_current": {
+      "status": "READY",
+      "repo": "maxJasper/sglang-0.5.23-cu130-amd64",
+      "revision": "25bb4121e30d40d2257ed7b9007763f7ca0c3b0e",
+      "bucket": "oi-deployment-files",
+      "prefix": "runtime/sglang-0.5.23-cu130-amd64-hf",
+      "files": 5,
+      "bytes": 39787221225,
+      "verified": "hash",
+      "completed_at": "2026-11-11T07:03:00Z",
+      "observed_size_bytes": 320
+    },
+    "marker_note": "The current independently fetched marker above is authoritative. Earlier interim observations were smaller and superseded. The aggregate includes metadata objects; do not require aggregate files/bytes to equal the tar alone."
+  },
+  "node": {
+    "pod": "pause-push/img-staging",
+    "node": "adeo-gpu-02",
+    "archive_path": "/tmp/sglang-0.5.23-cu130-amd64.tar (host; /host/tmp in pod)",
+    "size_bytes": 39787218432,
+    "raw_sha256_matches_source": true,
+    "containerd_socket": "/run/containerd/containerd.sock",
+    "namespace": "k8s.io",
+    "ctr_version": "1.7.28",
+    "import_directly_accepted_docker_archive": true,
+    "import_command": "kubectl -n pause-push exec img-staging --quiet -- /host/usr/bin/ctr -a /host/run/containerd/containerd.sock -n k8s.io images import /host/tmp/sglang-0.5.23-cu130-amd64.tar",
+    "imported_manifest_descriptor": "sha256:01e0d5637028f59e2836bfc8c385c393a9d722d4b971acbcfa66875569eee960",
+    "supported_identity_observation": "ctr -a /host/run/containerd/containerd.sock -n k8s.io images list name==REGISTRY/... returns exact target and descriptor, not images inspect --format"
+  },
+  "harbor": {
+    "status": 200,
+    "api": "OCI Distribution /v2/<full-repository>/manifests/0.5.23-cu130-amd64",
+    "docker_content_digest": "sha256:01e0d5637028f59e2836bfc8c385c393a9d722d4b971acbcfa66875569eee960",
+    "config_digest": "sha256:ab8fc368a60473e329bde89157d84b20ce3bef8fddd5b6bf4999df65c4392cf5",
+    "manifest_media_type_observed": "application/vnd.docker.distribution.manifest.v2+json (2026-11-11 live Distribution read; both HTTP Content-Type and manifest mediaType are Docker schema 2)",
+    "layers": 75,
+    "imported_manifest_descriptor": "sha256:01e0d5637028f59e2836bfc8c385c393a9d722d4b971acbcfa66875569eee960"
+  },
+  "conclusion": "Published registry tag and exact config/manifest identity proven. Registry delivery alone does not certify GPU compatibility, fix any incident, or deploy/restart a model. No model deployment changed.",
+  "tooling_status": "complete_harbor.py is reviewed archive-continuation code and has passed offline focused tests, not an independent live re-delivery of this tag. MinIO URL and registry Basic auth are supplied to the staging process using kubectl stdin; ctr's eventual --user argument can still be inspected by privileged users and is not hidden by a FIFO. The final manual ctr import/push/proof remains honored. verify-alain.py is a read-only registry identity verifier. Discarded one-off OC-dir helpers are not supported delivery commands."
+}

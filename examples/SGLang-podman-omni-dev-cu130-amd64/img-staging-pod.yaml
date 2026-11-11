@@ -15,8 +15,8 @@
 #   /host mount       - host root at /host gives /host/usr/bin/ctr, /host/tmp
 #                       (scratch space on the node's real disk) and /host/run.
 #
-# RKE2/Canal: containerd socket is /run/k3s/containerd/containerd.sock
-# (NOT /run/containerd/containerd.sock) even though crictl reports "containerd".
+# Al Ain: containerd socket is /host/run/containerd/containerd.sock
+# (NOT RKE2's /run/k3s/containerd/containerd.sock, which is Abu Dhabi).
 # =============================================================================
 apiVersion: v1
 kind: Pod

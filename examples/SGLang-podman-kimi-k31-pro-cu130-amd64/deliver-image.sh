@@ -68,8 +68,26 @@ MC_BUCKET="${MC_BUCKET:-oi-deployment-files}"
 MC_THREADS="${MC_THREADS:-64}"
 
 REGISTRY="${REGISTRY:-registry.adeoaiengine.ecouncil.ae}"
-REG_USER="${REG_USER:-custom-images}"
-REG_PASS="${REG_PASS:-CustomImages123}"
+set +x
+# Reuse the caller's inherited authorized protected environment without logging
+# the values. No default Basic password is embedded in this repository.
+REG_USER="${REG_USER:-}"
+REG_PASS="${REG_PASS:-}"
+export REG_USER REG_PASS
+[[ "$REG_USER" == *$'\n'* || "$REG_PASS" == *$'\n'* ]] && die 'Registry values must not contain line feeds'
+[[ -n "$REG_USER" && -n "$REG_PASS" ]] || die 'Provide existing authorized registry credentials via REG_USER and REG_PASS; no default credential is stored in this helper.'
+REG_USER="$REG_USER" REG_PASS="$REG_PASS" python3 - "$REGISTRY" "$REPO" "$TAG" --manifest-read <<'PY'
+import base64,os,ssl,sys,urllib.request
+host,repo,tag=sys.argv[1:4]
+auth=base64.b64encode(f"{os.environ['REG_USER']}:{os.environ['REG_PASS']}".encode()).decode()
+try:
+ request=urllib.request.Request(f'https://{host}/v2/{repo}/manifests/{tag}',headers={'Accept':'application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json','Authorization':'Basic '+auth})
+ with urllib.request.urlopen(request,context=ssl._create_unverified_context(),timeout=90) as r:
+  assert r.status == 200 and r.read(1)
+  print('Registry authentication readback available')
+except Exception as exc:
+ raise SystemExit('Registry preflight failed: '+type(exc).__name__) from None
+PY
 
 STAGING_NS="${STAGING_NS:-pause-push}"
 STAGING_POD="${STAGING_POD:-img-staging}"
@@ -375,20 +393,29 @@ if [ -z \"\$SRC\" ]; then
     exit 1
 fi
 echo \"      imported as: \$SRC\"
-
-\$CTR images tag --force \"\$SRC\" '${TARGET}'
-echo '      tagging ok, pushing to Harbor...'
-\$CTR images push --skip-verify -u '${REG_USER}:${REG_PASS}' '${TARGET}' 2>&1 | tail -5
-echo '      push complete'
+\$CTR images tag --force "\$SRC" '${TARGET}'
+echo '      target tag ready; separate protected-auth publisher follows'
 # Free only the TRANSIENT tar. Keep the oci-dir: it is the node-side blob cache
 # that makes a re-delivery skip 77 of 79 objects, and blobs are
 # content-addressed so a stale entry can never be wrong. /host/tmp is a hostPath
 # on the node's real disk, so it is NOT reclaimed when the pod is deleted.
-rm -f \"\$T\"
+rm -f "\$T"
 echo '      node tar removed (oci-dir kept as the blob cache)'
 "
 
-# --- 8. write the ledger, then verify ---------------------------------------
+# Preserve registry credentials through protected exec stdin, not arguments to
+# kubectl or its enclosing bash. The eventual ctr child still has a literal -u
+# argument visible to privileged local users; this does not hide that limitation.
+printf '%s:%s\n' "$REG_USER" "$REG_PASS" | \
+kubectl exec -i -n "$STAGING_NS" "$STAGING_POD" -- bash -c '
+set -euo pipefail
+IFS= read -r REG_BASIC
+CTR=(/host/usr/bin/ctr -a /host/run/containerd/containerd.sock -n k8s.io)
+TARGET="$1"
+test "$("${CTR[@]}" images list -q "name==${TARGET}")" = "$TARGET"
+"${CTR[@]}" images push --skip-verify -u "$REG_BASIC" "$TARGET"
+' -- "$TARGET"
+
 # The ledger is written only after the push succeeded, so a future run can
 # safely skip these blobs.
 say "8/8  record the delivery and verify against the registry"
@@ -421,12 +448,28 @@ mc --insecure cp --quiet "$LEDGER" "${S3PREFIX}/_delivery.json"
 # NOT_FOUND for this repository however the repo path is encoded, even though
 # the repo is listed and artifact_count is non-zero. The /v2 check is also a
 # STRONGER test -- it compares the config digest the registry serves against the
-# local image ID, proving the bytes in Harbor are the bytes we built.
-REG_MANIFEST=$(curl -sk -u "${REG_USER}:${REG_PASS}" \
-    -H 'Accept: application/vnd.oci.image.manifest.v1+json' \
-    -H 'Accept: application/vnd.docker.distribution.manifest.v2+json' \
-    -D /tmp/verify-headers.txt \
-    "https://${REGISTRY}/v2/${REPO}/manifests/${TAG}")
+# local image ID, proving the bytes in Harbor are the bytes we built. Basic auth
+# is read from inherited protected operator input, never put in command argv.
+REG_MANIFEST=$(python3 - "$REGISTRY" "$REPO" "$TAG" <<'PY'
+import base64,json,os,ssl,sys,urllib.request
+host,repo,tag=sys.argv[1:4]
+user=os.environ['REG_USER']
+url=f'https://{host}/v2/{repo}/manifests/{tag}'
+headers={
+ 'Accept':'application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json',
+ 'Authorization':'Basic '+base64.b64encode(f"{user}:{os.environ['REG_PASS']}".encode()).decode(),
+}
+try:
+ with urllib.request.urlopen(urllib.request.Request(url,headers=headers),context=ssl._create_unverified_context(),timeout=90) as response:
+  body=response.read()
+  assert response.status == 200
+  manifest=json.loads(body)
+  assert manifest.get('config',{}).get('digest'), 'Body is not an image manifest'
+  print(body.decode(),end='')
+except Exception as exc:
+ raise SystemExit('Registry readback failed: '+type(exc).__name__) from None
+PY
+)
 
 [[ -n "$REG_MANIFEST" ]] || die "registry returned an empty manifest for ${TARGET}"
 

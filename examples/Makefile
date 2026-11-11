@@ -119,6 +119,27 @@ push-sglang-podman-0.5.22-cu130: # Tag + push SGLang v0.5.22 cu130 image to Al A
 	@podman tag localhost/oicm/sglang:0.5.22-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
 	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.22-cu130-amd64
 
+build-sglang-podman-0.5.23-cu130: # Build custom model server image for SGLang v0.5.23 (CUDA 13.0 base, quiet startup harness)
+	@podman build --platform=linux/amd64 -t oicm/sglang:0.5.23-cu130-amd64 -f SGLang-podman-v0.5.23-cu130-amd64/Dockerfile SGLang-podman-v0.5.23-cu130-amd64
+	@podman tag oicm/sglang:0.5.23-cu130-amd64 localhost/oicm/sglang:0.5.23-cu130-amd64
+
+# The completed 2026-11-11 artifact did NOT use the old OCI-directory relay.
+# This target is an intentional first-HF-publication entry point: an existing
+# worktree tar is checked by expected raw SHA256 and source image config before
+# admission. It never rebuilds an unrelated image over the completed evidence.
+deliver-sglang-podman-0.5.23-cu130: # Export existing image and publish its Docker archive to the authorized public HF relay
+	@SGLang-podman-v0.5.23-cu130-amd64/publish_docker_archive.py
+
+continue-sglang-podman-0.5.23-cu130: # Read HF→MinIO evidence, optionally resume node→Harbor; never launch another live writer
+	@SGLang-podman-v0.5.23-cu130-amd64/complete_harbor.py $(ARGS)
+
+verify-sglang-podman-0.5.23-cu130: # Read-only Harbor manifest/config readback (no upload/import/push/deployment)
+	@SGLang-podman-v0.5.23-cu130-amd64/verify-alain.py --insecure-registry $(ARGS)
+
+push-sglang-podman-0.5.23-cu130: # Direct workstation push (historical/small/cached only; protected auth preflight required)
+	@REGISTRY='registry.adeoaiengine.ecouncil.ae' DIRECT_PUSH_CONFIRMED_ALLOW_SLOW=required EXTRA_FLAGS='--tls-verify=false' \
+	SGLang-podman-v0.5.23-cu130-amd64/harbor-auth.sh push-only localhost/oicm/sglang:0.5.23-cu130-amd64
+
 # Kimi-K3.1-Pro. NOT a v0.5.x release build: no tagged SGLang release can load
 # this model (v0.5.23 has no KimiK31ForConditionalGeneration and no 'kimi_k31'
 # model_type). Derived from the official preview image, which upstream builds
@@ -151,7 +172,7 @@ deliver-sglang-podman-kimi-k31-pro: build-sglang-podman-kimi-k31-pro # Ship K3.1
 # Only correct when every layer already exists in Harbor. Prefer deliver-* .
 push-sglang-podman-kimi-k31-pro: # Tag + podman push K3.1 image (slow; prefer deliver)
 	@podman tag localhost/oicm/sglang:kimi-k31-pro-cu130-amd64 registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:kimi-k31-pro-cu130-amd64
-	@podman push --tls-verify=false registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:kimi-k31-pro-cu130-amd64
+	@podman push --tls-verify=false registry.adeoaiengine.issue.acme/openinnovationai/platform/mlops/mlops-serving/sglang:kimi-k31-pro-cu130-amd64
 
 build-sglang-podman-omni-dev: # Build SGLang-Omni v0.2.0 serving image (cu130, lmsysorg/sglang 0.5.22 base)
 	@podman build --platform=linux/amd64 -t oicm/sglang-omni:0.2.0-cu130-amd64 -f SGLang-podman-omni-dev-cu130-amd64/Dockerfile SGLang-podman-omni-dev-cu130-amd64
