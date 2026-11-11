@@ -1,0 +1,11 @@
+# Never put transport scripts, local artifacts, caches/logs, or credentials
+# into a *whole examples tree* build context. Normal versioned-image builds use
+# only one image's three-file context, defined by examples/Makefile. Keep .sqsh
+# assets available for builds that intentionally copy them (for example the vLLM M2 image).
+.dockerignore
+**/scripts/
+**/image-archive/
+**/__pycache__/
+**/*.pyc
+**/*.log
+commands.txt

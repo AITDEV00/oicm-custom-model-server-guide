@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tarfile
 
+EXAMPLE = Path(__file__).resolve().parent.parent
 DIR = Path(__file__).resolve().parent
 SOURCE = 'localhost/oicm/sglang:0.5.23-cu130-amd64'
 TARGET = 'registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/sglang:0.5.23-cu130-amd64'
@@ -56,7 +57,8 @@ def validate(archive: Path) -> None:
 
 
 def main() -> None:
-    archive = DIR / DIR_NAME / NAME
+    archive = EXAMPLE / DIR_NAME / NAME
+    assert (EXAMPLE / 'Dockerfile').is_file(), 'Run the relocated image example, not an isolated helper copy'
     source_id = tool('podman', 'image', 'inspect', '--format', '{{.Id}}', SOURCE).strip().removeprefix('sha256:')
     if source_id != EXPECTED_CONFIG:
         raise SystemExit(f'Current image config {source_id} differs from proven artifact; treat as NEW artifact with new identity, revision, credentials scope and documentation')
@@ -65,15 +67,15 @@ def main() -> None:
         raise SystemExit('Exact archive already exists; refusing to re-export/republish. Existing Harbor identity is recorded in HF_RELAY.md.')
     if os.environ.get('INITIATE_PUBLIC_HF_RELAY') != 'I_HAVE_APPROVED_PUBLIC_ARTIFACT_TRANSIT':
         raise SystemExit('Set INITIATE_PUBLIC_HF_RELAY with this exact attestation only after public-transit/licensing/disclosure approval. No HF upload occurs otherwise; no manual credentials are required.')
-    (DIR / DIR_NAME).mkdir(exist_ok=True)
-    project_dir = DIR / DIR_NAME / '.hf-public-upload'
+    (EXAMPLE / DIR_NAME).mkdir(exist_ok=True)
+    project_dir = EXAMPLE / DIR_NAME / '.hf-public-upload'
     project_dir.mkdir(exist_ok=True)
     print('Exporting the known existing source image in Docker format to the persistent worktree', flush=True)
     subprocess.run(['podman', 'tag', SOURCE, TARGET], check=True)
     subprocess.run(['podman', 'save', '--format=docker-archive', '-o', str(archive), TARGET], check=True)
     validate(archive)
     print('Local archive protected. Writing public metadata only via HF uploader after committed LFS SHA verification.', flush=True)
-    subprocess.run([sys.executable, str(DIR / 'upload-public-hf.py')], check=True)
+    subprocess.run([sys.executable, str(Path(__file__).with_name('upload-public-hf.py'))], check=True)
     print('HF tar committed and verified. Run bastion hfs3 with pinned config; do not assume Harbor contains tag yet.', flush=True)
 
 

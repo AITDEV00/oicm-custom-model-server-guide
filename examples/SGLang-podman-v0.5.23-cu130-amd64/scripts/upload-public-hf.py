@@ -7,7 +7,7 @@ import tarfile
 from huggingface_hub import HfApi
 
 REPO = 'maxJasper/sglang-0.5.23-cu130-amd64'
-ARCHIVE = Path(__file__).resolve().parent / 'image-archive' / 'sglang-0.5.23-cu130-amd64.tar'
+ARCHIVE = Path(__file__).resolve().parent.parent / 'image-archive' / 'sglang-0.5.23-cu130-amd64.tar'
 assert ARCHIVE.is_file(), f'Missing export: {ARCHIVE}'
 # Explicit authentication overrides the inherited read-only HF_TOKEN from the
 # shell that opened the masked write login. Never print or persist this value.

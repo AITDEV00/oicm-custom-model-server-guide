@@ -6,6 +6,19 @@ Build:
 make build-sglang-podman-0.5.23-cu130
 ```
 
+## File map
+
+| Path | Role |
+|------|------|
+| `Dockerfile`, `startup.sh`, `arg_normalizer.py` | Runtime image build and OICM non-root serving contract |
+| `HF_RELAY.md`, `delivery-evidence.json` | Completed transport evidence and image identities |
+| `hfs3-alain.yaml`, `img-staging-pod.yaml` | Declarative transport configuration without credentials |
+| [scripts/](scripts/) | First-publication, continuation, protected authentication, and read-only verification helpers |
+| `image-archive/` | Local-only raw archive, Hub cache/state, one-off upload log and wait helper; reused in place, **not committed** |
+
+The Make targets below remain the supported entry point from `examples/`.
+The completed artifact's identity does not change because helpers moved.
+
 For an Al Ain cold transfer, use the verified **durable Docker archive →
 authorized public HF transport repo → Al Ain bastion `hfs3` → MinIO →
 containerd → Harbor** route. [HF_RELAY.md](HF_RELAY.md) records the exact
@@ -15,7 +28,7 @@ completed artifact, run and checks. The canonical full procedure is in the
 The supported first-publication wrapper is
 `make deliver-sglang-podman-0.5.23-cu130`: its Python script validates the
 unchanged source ID/Docker archive and uses the protected write token for
-`upload-public-hf.py`. It requires an explicit public-disclosure approval and
+`scripts/upload-public-hf.py`. It requires an explicit public-disclosure approval and
 refuses an exact already-present archive. Use a single manually managed
 hfs3 `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` session for the following
 bastion handoff. No MinIO secret is written to its YAML. Install the existing
@@ -25,7 +38,7 @@ LFS size/SHA and record the resolved main commit, then pin that exact commit
 in `hfs3-alain.yaml` before starting bastion ingest.
 
 MinIO creates no Harbor publication by itself. For only the authorized
-incomplete remaining node-Harbor leg use `complete_harbor.py --retry-push`
+incomplete remaining node-Harbor leg use `scripts/complete_harbor.py --retry-push`
 once, not the retired OCI helpers. Its registry Basic auth comes from the
 existing protected non-public runtime store.
 It uses Bash `-c` with protected `kubectl -i` stdin, so userdata never appears
@@ -44,19 +57,19 @@ registry.adeoaiengine.ecouncil.ae/openinnovationai/platform/mlops/mlops-serving/
 No model deployment was changed. No GPU/model inference test or DeepSeek crash
 fix is implied by registry delivery.
 
-[Complete Harbor](complete_harbor.py) is the reviewed archive-based finalizer
+[Complete Harbor](scripts/complete_harbor.py) is the reviewed archive-based finalizer
 for a future incomplete delivery; `--retry-push` doesn't re-transfer anything
 when the local raw-node archive and target descriptor are already right. All
 credentials come from the existing protected runtime store, not source/history.
 The original successful execution operated `ctr` via a protected local 0600
 credentials file through the separate single-writer staging-session stdin.
-It was not a `make` invocation. No --auth-file is supported by ctr--see the
+It was not a `make` invocation. `ctr` 1.7.28 has no `--auth-file`; see the
 notes before relying on an alternative method.
 
-[Verify Al Ain](verify-alain.py) is the separate read-only registry verifier;
+[Verify Al Ain](scripts/verify-alain.py) is the separate read-only registry verifier;
 supply the trusted CA via `--tls-ca-bundle` when available and keep the scoped
 TLS exception only for the tested registry path when required. The optional
-`harbor-auth.sh preflight` is read-only; its direct-push mode is not the default.
+`scripts/harbor-auth.sh preflight` is read-only; its direct-push mode is not the default.
 `sleep` callers and helper wrappers, not process output alone, decide completion.
 Unsupported historical recovery code and its exposed credential defaults were
 removed. Only a nonsecret retirement note remains in

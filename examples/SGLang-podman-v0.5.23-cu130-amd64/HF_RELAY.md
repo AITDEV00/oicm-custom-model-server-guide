@@ -21,7 +21,7 @@ artifact.**
 
 The durable worktree archive is `image-archive/sglang-0.5.23-cu130-amd64.tar`,
 created with `podman save --format=docker-archive`, not temporary storage.
-For a **new**, authorized delivery, `publish_docker_archive.py` performs this
+For a **new**, authorized delivery, `scripts/publish_docker_archive.py` performs this
 source-ID/tag guard and verified export before calling the one-HF uploader:
 
 ```bash
@@ -55,7 +55,7 @@ explicitly reads HF CLI's stored token and verifies its write permission before
 starting. An old read-only `HF_TOKEN` inherited from the environment must not be
 used. Do not paste credentials into chat, source files, or public metadata.
 
-Run only one instance of `upload-public-hf.py`. It uses HF's resumable large
+Run only one instance of `scripts/upload-public-hf.py`. It uses HF's resumable large
 folder workflow with one worker so partial progress is recorded locally and
 large-file uploads can be retried. It verifies that the committed HF LFS object
 has the expected size, records that exact SHA-256 in `manifest.sha256`, then
@@ -118,7 +118,7 @@ OCI in Accept does not prove the registry chooses an OCI response:
 
 - Manifest `sha256:01e0d5637028f59e2836bfc8c385c393a9d722d4b971acbcfa66875569eee960`.
 - Config `sha256:ab8fc368a60473e329bde89157d84b20ce3bef8fddd5b6bf4999df65c4392cf5`.
-- Independent OCI Distribution read: HTTP 200, matching raw manifest digest,
+- Independent Docker Distribution read returning Docker schema 2: HTTP 200, matching raw manifest digest,
   source config, and 75 ordered layer descriptors.
 
 **The archive is imported and its Harbor push verified. No model deployment
@@ -126,7 +126,7 @@ was changed, restarted, rolled out, or runtime-certified.**
 
 ## Reviewed continuation and Basic-auth limitation
 
-[complete_harbor.py](complete_harbor.py) is the supported extensible route,
+[scripts/complete_harbor.py](scripts/complete_harbor.py) is the supported extensible route,
 using `--retry-push` and protected `REGISTRY_CREDS_FILE`. It is **reviewed
 archive-based continuation code, not literal executed commands** for this
 delivery. Compilation, focused offline tests and identity review passed; a
@@ -137,7 +137,7 @@ It checks raw source order and diff IDs against config using host `chroot`
 Python on a dedicated stdin, separate from protected URL/Basic-data streams.
 It documents the actual ctr `--user` limitation rather than claiming unsupported
 authfile or hidden FIFO secret arguments; protected stdin only for containing
-`bash -c` handoff. `verify-alain.py` is read-only; retired OCI scripts not part
+`bash -c` handoff. `scripts/verify-alain.py` is read-only; retired OCI scripts not part
 of the supported delivery route. A full new-helper production redelivery was
 NOT performed; no need to repeat already verified transport for testing prose.
 
@@ -182,7 +182,7 @@ environment; do not use it without `chroot /host`. Network timings from other
 transfers are not artifact evidence. Inspect the actual writer and manifest
 before any narrow retry. Do not repeat source, HF, or MinIO legs once exact
 registry identity is established.
-Current executing read-only verifier: `verify-alain.py --insecure-registry`
+Current executing read-only verifier: `scripts/verify-alain.py --insecure-registry`
 locates existing protected exact-registry Basic store and reads the actual HTTP
 200 config/manifest; optional config/blob SHA checks run only when explicitly
 requested with `--check-blobs`.

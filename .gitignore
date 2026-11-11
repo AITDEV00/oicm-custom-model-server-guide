@@ -1,9 +1,25 @@
+# Large exported Docker/OCI runtime tar archives (including local keep archives).
 *.tar
+
+# Python/development local caches and generated documentation.
+__pycache__/
+*.py[cod]
+.env
+.venv/
+/site/
+
+# Workspace scratch commands and transient upload outputs. Curated docs/evidence
+# stay tracked; do not add broad *.txt or *.log ignores to this source repo.
+commands.txt
+*.scratch.txt
+*.retry.log
+*.upload.log
+*launchlog.txt
+
+examples/SGLang-podman-v0.5.23-cu130-amd64/image-archive/
 
 # Local malformed Fundorch placeholder; not a source/example file.
 examples/vLLM-fundorch/minir
 
-# MkDocs build output
-/site/
 # VibeVoice incident logs (contain real interview content - keep local only)
 examples/vLLM-podman-vibevoice-awq-0.27.1-cu129-amd64/incident-2026-09-02/

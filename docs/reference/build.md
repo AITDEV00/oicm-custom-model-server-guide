@@ -28,7 +28,8 @@ They are deliberately absent from the build-only table; see the workflow below.
 
 ## Push workflow
 
-The `commands.txt` file logs tag + push commands to:
+Local `commands.txt` scratch files are not authoritative or tracked. The
+canonical procedures publish to:
 
 - **Al Ain** registry — `registry.adeoaiengine.ecouncil.ae/...`
 - **Abu Dhabi** Harbor — `harbor.ai.ecouncil.ae`
@@ -42,8 +43,8 @@ The SGLang v0.5.23 delivery was verified on 2026-11-11; image transport does
 not create or change a deployment.
 
 The [v0.5.23 example](../../examples/SGLang-podman-v0.5.23-cu130-amd64/HF_RELAY.md)
-contains its dedicated upload/import helpers. Complete with actual registry
-config/manifest/digest readback, not a successful process observation.
+contains its dedicated `scripts/` upload/import helpers. Complete with actual
+registry config/manifest/digest readback, not a successful process observation.
 
 **Source-link caveat:** these repository-relative links work in the source
 tree to directories outside MkDocs' `docs/` root. Do not move them into
